@@ -1,0 +1,92 @@
+<!-- src/views/report-template.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{title}}</title>
+    <style>
+      body {
+        margin: 33mm; /* Add margin to the PDF */
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border: 1px solid black;
+        padding: 8px;
+        text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>{{title}}</h1>
+    <p>Tanggal: {{{currentDate}}}</p>
+
+    <h2>Data Kwarran</h2>
+    <table>
+      <tr>
+        <th>Nama Kwarran</th>
+        <th>Ketua Kwarran</th>
+        <th>Email</th>
+        <th>Jumlah Gudep</th>
+      </tr>
+      {{{kwarranRows}}}
+    </table>
+
+    <h2>Data Gudep</h2>
+    <table>
+      <tr>
+        <th>No</th>
+        <th>No Gudep</th>
+        <th>Tingkatan</th>
+        <th>Mabigus</th>
+        <th>Pembina</th>
+        <th>Pelatih</th>
+        <th>Email</th>
+        <th>Jumlah Putra</th>
+        <th>Jumlah Putri</th>
+      </tr>
+      {{{gudepRows}}}
+    </table>
+
+    <h2>Data Geografis</h2>
+    <table>
+      <tr>
+        <th>Alamat</th>
+        <th>Koordinat</th>
+      </tr>
+      {{{geografisRows}}}
+    </table>
+
+    <h2>Data Peserta Didik</h2>
+    <table>
+      <tr>
+        <th>Nama</th>
+        <th>Gender</th>
+        <th>Tanggal Lahir</th>
+      </tr>
+      {{{pesertaDidikRows}}}
+    </table>
+
+    <h2>Data Event</h2>
+    <table>
+      <tr>
+        <th>Nama Event</th>
+        <th>Tanggal Mulai</th>
+        <th>Tanggal Selesai</th>
+      </tr>
+      {{{eventRows}}}
+    </table>
+
+    <h2>Data Prestasi</h2>
+    <table>
+      <tr>
+        <th>Keterangan</th>
+      </tr>
+      {{{prestasiRows}}}
+    </table>
+  </body>
+</html>
