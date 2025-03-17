@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{{title}}}</title>
+    <style>
+      @page {
+        size: A4 portrait; /* Ubah orientasi menjadi portrait */
+        margin: 20mm; /* Set margin untuk PDF */
+      }
+      body {
+        font-family: Arial, sans-serif; /* Set font default */
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border: 1px solid black;
+        padding: 8px;
+        text-align: left;
+      }
+      h3 {
+        page-break-after: avoid; /* Hindari page break setelah heading */
+      }
+      @media print {
+        body {
+          margin: 0; /* Hapus margin saat mencetak */
+        }
+        table {
+          page-break-inside: auto; /* Izinkan page break dalam tabel */
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h2>{{{title}}}</h2>
+    <p>Data ini diambil pada tanggal: {{{currentDate}}}</p>
+
+    <h3>Data Kwarran</h3>
+    <table>
+      <tr>
+        <th style="width: 30%">Kode Kwarran</th>
+        <td>{{{kwarranKode}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Nama Kwarran</th>
+        <td>{{{kwarranNama}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Ketua Kwarran</th>
+        <td>{{{kwarranKetua}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Ketua DKR</th>
+        <td>{{{kwarranKetuaDKR}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Email</th>
+        <td>{{{kwarranEmail}}}</td>
+      </tr>
+    </table>
+
+    <h3>Data Gugusdepan</h3>
+    <table>
+      <tr>
+        <th style="width: 30%">Kode Gudep</th>
+        <td>{{{gudepKode}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Tingkatan</th>
+        <td>{{{gudepTingkatan}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Mabigus</th>
+        <td>{{{gudepMabigus}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Pembina</th>
+        <td>{{{gudepPembina}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Pelatih</th>
+        <td>{{{gudepPelatih}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Email</th>
+        <td>{{{gudepEmail}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Jumlah Laki</th>
+        <td>{{{gudepJumlahLaki}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Jumlah Perempuan</th>
+        <td>{{{gudepJumlahPerempuan}}}</td>
+      </tr>
+    </table>
+
+    <h3>Data Geografis</h3>
+    <table>
+      <tr>
+        <th style="width: 30%">Koordinat</th>
+        <td>{{{geoKoordinat}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Longitude</th>
+        <td>{{{geoLong}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Latitude</th>
+        <td>{{{geoLat}}}</td>
+      </tr>
+      <tr>
+        <th style="width: 30%">Alamat</th>
+        <td>{{{geoAlamat}}}</td>
+      </tr>
+    </table>
+
+    <h3>Data Prestasi</h3>
+    <table>
+      <tr>
+        <th style="width: 5%">No</th>
+        <th style="width: 35%">Nama Kegiatan</th>
+        <th style="width: 60%">Keterangan</th>
+      </tr>
+      {{{eventRows}}}
+    </table>
+  </body>
+</html>

@@ -58,10 +58,6 @@ db.Gudep.hasMany(db.Event, {
   foreignKey: "gudep_id",
   as: "eventes",
 });
-db.Event.belongsTo(db.Gudep, {
-  foreignKey: "gudep_id",
-  as: "gudepes",
-});
 
 // **Gudep and Laporan (One-to-Many)**
 db.Gudep.hasMany(db.Laporan, {
@@ -74,6 +70,9 @@ db.Laporan.belongsTo(db.Gudep, {
 });
 
 // ✅ Hooks
+// **Event and Prestasi (One-to-Many)**
+db.Event.hasMany(db.Prestasi, { foreignKey: "event_id", as: "prestasies" });
+db.Prestasi.belongsTo(db.Event, { foreignKey: "event_id", as: "eventes" });
 
 // **Hook for creating Gudep and Geografis automatically after User creation**
 db.User.afterCreate(async (user) => {

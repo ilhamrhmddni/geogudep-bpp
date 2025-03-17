@@ -4,28 +4,34 @@ const { v4: uuidv4 } = require("uuid");
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    // Ambil satu ID dari tabel "gudep"
-    const gudepData = await queryInterface.sequelize.query(
-      `SELECT id FROM "gudep" LIMIT 1;`,
-      { type: Sequelize.QueryTypes.SELECT }
-    );
+    const pesertaDidikData = [];
 
-    if (!gudepData.length) throw new Error("Tidak ada data Gudep!");
+    for (let i = 0; i < 30; i++) {
+      // Ambil satu ID gudep secara acak dari tabel "gudep"
+      const gudepData = await queryInterface.sequelize.query(
+        `SELECT id FROM "gudep" ORDER BY RANDOM() LIMIT 1;`,
+        { type: Sequelize.QueryTypes.SELECT }
+      );
 
-    const gudep = gudepData[0]; // Ambil gudep pertama
+      if (!gudepData.length) throw new Error("Tidak ada data Gudep!");
 
-    await queryInterface.bulkInsert("pesertadidik", [
-      {
+      const gudep = gudepData[0]; // Ambil gudep pertama
+
+      // Tambahkan data Peserta Didik ke array
+      pesertaDidikData.push({
         id: uuidv4(),
-        gudep_id: gudep.id, // Ambil ID dari gudep yang sudah ada
-        nama: "Peserta 1",
-        gender: "Laki-laki",
-        ttl: "2000-01-01",
-        detailtingkatan: "Detail Tingkatan 1",
+        gudep_id: gudep.id, // Menggunakan ID dari gudep yang ada
+        nama: `Peserta ${i + 1}`, // Unique name for each participant
+        gender: i % 2 === 0 ? "Laki-laki" : "Perempuan", // Alternating gender
+        ttl: `2000-01-${String((i % 28) + 1).padStart(2, "0")}`, // Random birth date
+        detailtingkatan: `Detail Tingkatan ${i + 1}`, // Unique detail for each participant
         createdAt: new Date(),
         updatedAt: new Date(),
-      },
-    ]);
+      });
+    }
+
+    // Insert multiple records into the "pesertadidik" table
+    await queryInterface.bulkInsert("pesertadidik", pesertaDidikData);
   },
 
   down: async (queryInterface) => {

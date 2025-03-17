@@ -2,34 +2,29 @@
 const { v4: uuidv4 } = require("uuid");
 
 /** @type {import('sequelize-cli').Migration} */
-// seeders/20231001-demo-kwarran.js
 module.exports = {
   up: async (queryInterface) => {
-    await queryInterface.bulkInsert("kwarran", [
-      {
+    const kwarranData = [];
+
+    // Create 6 kwarran entries
+    for (let i = 1; i <= 6; i++) {
+      kwarranData.push({
         id: uuidv4(),
-        kode: 1,
-        nama: "Kwarran 1",
-        ketua_kwarran: "Ketua 1",
-        ketua_dkr: "Ketua DKR 1",
-        jumlah_gudep: 0,
-        email: "kwarran1@example.com",
+        kode: i, // Unique code for each kwarran
+        nama: `Kwarran ${i}`, // Unique name for each kwarran
+        ketua_kwarran: `Ketua ${i}`, // Unique leader name for each kwarran
+        ketua_dkr: `Ketua DKR ${i}`, // Unique DKR leader name for each kwarran
+        jumlah_gudep: 0, // Initial number of Gudep
+        email: `kwarran${i}@example.com`, // Unique email for each kwarran
         createdAt: new Date(),
         updatedAt: new Date(),
-      },
-      {
-        id: uuidv4(),
-        kode: 2,
-        nama: "Kwarran 2",
-        ketua_kwarran: "Ketua 2",
-        ketua_dkr: "Ketua DKR 2",
-        jumlah_gudep: 0,
-        email: "kwarran2@example.com",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ]);
+      });
+    }
+
+    // Insert multiple records into the "kwarran" table
+    await queryInterface.bulkInsert("kwarran", kwarranData);
   },
+
   down: async (queryInterface) => {
     await queryInterface.bulkDelete("kwarran", null, {});
   },

@@ -4,28 +4,36 @@ const { v4: uuidv4 } = require("uuid");
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    // Ambil satu ID dari tabel "gudep"
-    const gudepData = await queryInterface.sequelize.query(
-      `SELECT id FROM "gudep" LIMIT 1;`,
-      { type: Sequelize.QueryTypes.SELECT }
-    );
+    const geografisData = [];
 
-    if (!gudepData.length) throw new Error("Tidak ada data Gudep!");
+    for (let i = 0; i < 30; i++) {
+      // Ambil satu ID gudep secara acak dari tabel "gudep"
+      const gudepData = await queryInterface.sequelize.query(
+        `SELECT id FROM "gudep" ORDER BY RANDOM() LIMIT 1;`,
+        { type: Sequelize.QueryTypes.SELECT }
+      );
 
-    const gudep = gudepData[0]; // Ambil gudep pertama
+      if (!gudepData.length) throw new Error("Tidak ada data Gudep!");
 
-    await queryInterface.bulkInsert("geografis", [
-      {
+      const gudep = gudepData[0]; // Ambil gudep pertama
+
+      // Tambahkan data Geografis ke array
+      geografisData.push({
         id: uuidv4(),
         gudep_id: gudep.id, // Menggunakan ID dari gudep yang ada
-        titik_koordinat: "0,0",
-        longitude: "0",
-        latitude: "0",
-        alamat: "Alamat 1",
+        titik_koordinat: `${Math.random() * 180 - 90},${
+          Math.random() * 360 - 180
+        }`, // Random coordinates
+        longitude: (Math.random() * 360 - 180).toString(), // Random longitude
+        latitude: (Math.random() * 180 - 90).toString(), // Random latitude
+        alamat: `Alamat ${i + 1}`, // Unique address
         createdAt: new Date(),
         updatedAt: new Date(),
-      },
-    ]);
+      });
+    }
+
+    // Insert multiple records into the "geografis" table
+    await queryInterface.bulkInsert("geografis", geografisData);
   },
 
   down: async (queryInterface) => {
