@@ -35,12 +35,16 @@ const Gudep = sequelize.define(
       onDelete: "CASCADE",
       field: "kwarran_id",
     },
+    pangkalan: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     no_gudep: {
       type: DataTypes.STRING,
       allowNull: true,
     },
     tingkatan: {
-      type: DataTypes.ENUM("Siaga", "Penggalang", "Penegak", "Pandega"),
+      type: DataTypes.ENUM("Siaga", "Penggalang", "Penegak/Pandega", "Pandega"),
       defaultValue: "Penegak",
       allowNull: false,
     },

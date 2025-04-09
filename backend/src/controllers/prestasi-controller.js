@@ -8,7 +8,7 @@ module.exports = {
         include: [
           {
             model: Event,
-            attributes: ["id", "nama"],
+            attributes: ["id", "nama", "tingkat", "tanggal_mulai"],
             required: false,
             as: "eventes",
           },

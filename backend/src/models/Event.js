@@ -27,7 +27,13 @@ const Event = sequelize.define(
       allowNull: false,
     },
     tingkat: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM(
+        "Ranting",
+        "Cabang",
+        "Daerah",
+        "Nasional",
+        "Internasional"
+      ),
       allowNull: false,
     },
     penyelenggara: {

@@ -11,12 +11,25 @@ const Geografis = sequelize.define(
       allowNull: false,
       primaryKey: true,
     },
+    user_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "user",
+        key: "id",
+        as: "useres",
+      },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+      field: "user_id",
+    },
     gudep_id: {
       type: DataTypes.UUID,
       allowNull: true,
       references: {
         model: "gudep",
         key: "id",
+        as: "gudepes",
       },
       onDelete: "CASCADE",
       onUpdate: "CASCADE",

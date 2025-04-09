@@ -62,7 +62,7 @@ module.exports = {
       photo_path,
     } = req.body;
     try {
-      const existingUser = await User.findOne({ where: { email } });
+      const existingUser = await User.findOne({ where: { username } });
 
       if (existingUser) {
         return res.status(400).json({ message: "Email sudah terdaftar" });
