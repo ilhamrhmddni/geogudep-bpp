@@ -13,10 +13,6 @@ const AdminGeografis = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Contoh role, bisa didapatkan dari konteks atau cookie
-  const [userRole, setUserRole] = useState("null"); // Misalkan role pengguna disetel ke "admin"
-  console.log("User  Role:", userRole);
-
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -70,7 +66,7 @@ const AdminGeografis = () => {
     .map((item) => {
       return {
         ...item,
-        no_gudep: item.gudepes?.no_gudep || "-", // Pastikan ini mengakses dengan benar
+        no_gudep: item.gudepes?.no_gudep || "-", // Periksa akses ini
         maps_link: (
           <a
             href={`https://www.google.com/maps?q=${item.latitude},${item.longitude}`}
@@ -83,7 +79,6 @@ const AdminGeografis = () => {
           </a>
         ),
         titik_koordinat: `${item.latitude}, ${item.longitude}`,
-        user_role: item.useres?.role ?? "-", // Menambahkan user_role dengan nilai default
       };
     })
     .filter((item) => {
@@ -97,8 +92,7 @@ const AdminGeografis = () => {
         ? item.Gudep?.kwarran_id === selectedKwarran
         : true;
 
-      // Sembunyikan item jika user.role adalah "admin"
-      const isNotAdmin = item.useres?.role !== "admin"; // Pastikan untuk mengecek role user di sini
+      const isNotAdmin = item.gudepes?.no_gudep !== "ADMIN"; // Filter item yang tidak memiliki gudep ADMIN
 
       return matchesSearch && matchesKwarran && isNotAdmin; // Filter berdasarkan semua kriteria
     });

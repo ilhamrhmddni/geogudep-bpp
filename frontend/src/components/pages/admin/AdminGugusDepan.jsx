@@ -14,13 +14,13 @@ const AdminGugusdepan = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Ambil data Gugusdepan dari API
+  // Fetch Gugusdepan data from API
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         const result = await fetchGugusdepan();
-        console.log("Data Gugusdepan:", result.data); // Log data yang diterima
+        console.log("Data Gugusdepan:", result.data);
         setData(Array.isArray(result.data) ? result.data : []);
         setError(null);
       } catch (error) {
@@ -34,7 +34,7 @@ const AdminGugusdepan = () => {
     fetchData();
   }, []);
 
-  // Ambil data Kwarran dari API
+  // Fetch Kwarran data from API
   useEffect(() => {
     const fetchKwarranData = async () => {
       try {
@@ -52,6 +52,7 @@ const AdminGugusdepan = () => {
     { key: "no_gudep", label: "No. Gudep" },
     { key: "kwarran_nama", label: "Kwarran" },
     { key: "tingkatan", label: "Tingkatan" },
+    { key: "pangkalan", label: "Pangkalan" }, // Added Pangkalan header
     { key: "jumlah_putra", label: "Jumlah Putra" },
     { key: "jumlah_putri", label: "Jumlah Putri" },
     { key: "email", label: "Email" },
@@ -77,7 +78,6 @@ const AdminGugusdepan = () => {
 
   const filteredData = data
     .filter((item) => {
-      // Log setiap item untuk melihat isinya
       console.log("Item sebelum filter:", item);
 
       const matchesSearch =
@@ -101,8 +101,8 @@ const AdminGugusdepan = () => {
         ? item.tingkatan === selectedTingkatan
         : true;
 
-      // Sembunyikan item jika user.role adalah "admin"
-      const isNotAdmin = item.useres?.role !== "admin"; // Pastikan untuk mengecek role user di sini
+      // Ensure that the role of the user is not admin
+      const isNotAdmin = item.useres?.role !== "admin";
 
       console.log("Matches:", {
         matchesSearch,
@@ -111,7 +111,7 @@ const AdminGugusdepan = () => {
         isNotAdmin,
       });
 
-      return matchesSearch && matchesKwarran && matchesTingkatan && isNotAdmin; // Filter berdasarkan semua kriteria
+      return matchesSearch && matchesKwarran && matchesTingkatan && isNotAdmin;
     })
     .map((item) => {
       console.log("Item setelah filter:", item);
@@ -171,8 +171,11 @@ const AdminGugusdepan = () => {
               <option value="Penggalang" className="text-[#9500FF] font-bold">
                 Penggalang
               </option>
-              <option value="Penegak" className="text-[#9500FF] font-bold">
-                Penegak
+              <option
+                value="Penegak/Pandega"
+                className="text-[#9500FF] font-bold"
+              >
+                Penegak/Pandega
               </option>
               <option value="Pandega" className="text-[#9500FF] font-bold">
                 Pandega
@@ -180,11 +183,11 @@ const AdminGugusdepan = () => {
             </select>
           </div>
 
-          {/* Loading & Error */}
+          {/* Loading & Error Messages */}
           {loading && <p className="text-center mt-4">Loading data...</p>}
           {error && <p className="text-center mt-4 text-red-500">{error}</p>}
 
-          {/* Menampilkan tabel atau pesan jika data kosong */}
+          {/* Display table or message if no data found */}
           {filteredData.length === 0 && !loading ? (
             <p className="text-center mt-4">Data tidak ditemukan</p>
           ) : (

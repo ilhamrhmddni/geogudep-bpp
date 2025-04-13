@@ -123,11 +123,7 @@ const App = () => {
         <Route
           path="/operator/profile"
           element={
-            <ProtectedRoute
-              token={token}
-              role={roleUser}
-              allowedRole="operator"
-            >
+            <ProtectedRoute allowedRoles="operator">
               <OperatorProfile />
             </ProtectedRoute>
           }

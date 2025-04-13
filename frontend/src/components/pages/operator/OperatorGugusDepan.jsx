@@ -16,6 +16,7 @@ const OperatorGugusdepan = () => {
   const [jumlahPutra, setJumlahPutra] = useState(0);
   const [jumlahPutri, setJumlahPutri] = useState(0);
   const [noGudep, setNoGudep] = useState("");
+  const [pangkalan, setPangkalan] = useState(""); // Pangkalan state
   const [isEditable, setIsEditable] = useState(false);
 
   const tokenData = decodeToken();
@@ -32,6 +33,7 @@ const OperatorGugusdepan = () => {
         setJumlahPutra(result.data.jumlah_putra || 0);
         setJumlahPutri(result.data.jumlah_putri || 0);
         setNoGudep(result.data.no_gudep || "");
+        setPangkalan(result.data.pangkalan || ""); // Initialize pangkalan
         setError(null);
       } catch (error) {
         setError("Error fetching data.");
@@ -42,7 +44,7 @@ const OperatorGugusdepan = () => {
     };
 
     fetchData();
-  }, []);
+  }, [gudepId]);
 
   useEffect(() => {
     const fetchKwarranData = async () => {
@@ -77,6 +79,7 @@ const OperatorGugusdepan = () => {
             jumlah_putra: jumlahPutra,
             jumlah_putri: jumlahPutri,
             no_gudep: noGudep,
+            pangkalan: pangkalan, // Include pangkalan in the submission
           });
 
           Swal.fire("Sukses!", "Data Anda telah disimpan.", "success");
@@ -86,6 +89,7 @@ const OperatorGugusdepan = () => {
           setJumlahPutra(updatedResult.data.jumlah_putra || 0);
           setJumlahPutri(updatedResult.data.jumlah_putri || 0);
           setNoGudep(updatedResult.data.no_gudep || "");
+          setPangkalan(updatedResult.data.pangkalan || ""); // Update pangkalan
           setIsEditable(false);
         } catch (error) {
           Swal.fire("Error!", "Gagal menyimpan data.", "error");
@@ -157,89 +161,93 @@ const OperatorGugusdepan = () => {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[#9500FF] font-bold mb-2 block">
+                    No. Gudep:
+                  </label>
+                  <input
+                    type="text"
+                    value={noGudep}
+                    onChange={(e) => setNoGudep(e.target.value)}
+                    className="rounded-xl p-3 w-full border border-gray-300"
+                    placeholder="Masukkan No. Gudep"
+                    readOnly={!isEditable}
+                  />
+                </div>
+                <div>
+                  <label className="text-[#9500FF] font-bold mb-2 block">
+                    Pangkalan:
+                  </label>
+                  <input
+                    type="text"
+                    value={pangkalan} // Controlled input for Pangkalan
+                    onChange={(e) => setPangkalan(e.target.value)}
+                    className="rounded-xl p-3 w-full border border-gray-300"
+                    readOnly={!isEditable}
+                    placeholder="Masukkan Pangkalan"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[#9500FF] font-bold mb-2 block">
+                    Kwarran:
+                  </label>
+                  <select
+                    value={data.kwarran_id || ""}
+                    onChange={(e) =>
+                      setData({ ...data, kwarran_id: e.target.value })
+                    }
+                    className="rounded-xl p-3 w-full border border-gray-300"
+                    disabled={!isEditable}
+                  >
+                    <option value="">Pilih Kwarran</option>
+                    {kwarranList.map((kwarran) => (
+                      <option key={kwarran.id} value={kwarran.id}>
+                        {kwarran.nama}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[#9500FF] font-bold mb-2 block">
+                    Tingkatan:
+                  </label>
+                  <select
+                    value={data.tingkatan || ""}
+                    onChange={(e) =>
+                      setData({ ...data, tingkatan: e.target.value })
+                    }
+                    className="rounded-xl p-3 w-full border border-gray-300"
+                    disabled={!isEditable}
+                  >
+                    <option value="">Pilih Tingkatan</option>
+                    <option value="Siaga">Siaga</option>
+                    <option value="Penggalang">Penggalang</option>
+                    <option value="Penegak/Pandega">Penegak/Pandega</option>
+                    <option value="Pandega">Pandega</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="text-[#9500FF] font-bold mb-2 block">
-                  No. Gudep:
+                  Mabigus:
                 </label>
                 <input
                   type="text"
-                  value={noGudep}
-                  onChange={(e) => setNoGudep(e.target.value)}
-                  className="rounded-xl p-3 w-full border border-gray-300"
-                  placeholder="Masukkan No. Gudep"
-                  readOnly={!isEditable}
-                />
-              </div>
-
-              <div>
-                <label className="text-[#9500FF] font-bold mb-2 block">
-                  Kwarran:
-                </label>
-                <select
-                  value={data.kwarran_id || ""}
+                  value={data.mabigus || ""}
                   onChange={(e) =>
-                    setData({ ...data, kwarran_id: e.target.value })
+                    setData({ ...data, mabigus: e.target.value })
                   }
-                  className="rounded-xl p-3 w-full border border-gray-300"
-                  disabled={!isEditable}
-                >
-                  <option value="">Pilih Kwarran</option>
-                  {kwarranList.map((kwarran) => (
-                    <option key={kwarran.id} value={kwarran.id}>
-                      {kwarran.nama}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[#9500FF] font-bold mb-2 block">
-                  Tingkatan:
-                </label>
-                <select
-                  value={data.tingkatan || ""}
-                  onChange={(e) =>
-                    setData({ ...data, tingkatan: e.target.value })
-                  }
-                  className="rounded-xl p-3 w-full border border-gray-300"
-                  disabled={!isEditable}
-                >
-                  <option value="">Pilih Tingkatan</option>
-                  <option value="Siaga">Siaga</option>
-                  <option value="Penggalang">Penggalang</option>
-                  <option value="Penegak/Pandega">Penegak/Pandega</option>
-                  <option value="Pandega">Pandega</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[#9500FF] font-bold mb-2 block">
-                  Email:
-                </label>
-                <input
-                  type="email"
-                  value={data.email || ""}
-                  onChange={(e) => setData({ ...data, email: e.target.value })}
                   className="rounded-xl p-3 w-full border border-gray-300"
                   readOnly={!isEditable}
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[#9500FF] font-bold mb-2 block">
-                    Mabigus:
-                  </label>
-                  <input
-                    type="text"
-                    value={data.mabigus || ""}
-                    onChange={(e) =>
-                      setData({ ...data, mabigus: e.target.value })
-                    }
-                    className="rounded-xl p-3 w-full border border-gray-300"
-                    readOnly={!isEditable}
-                  />
-                </div>
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
                     Pembina:
@@ -254,21 +262,20 @@ const OperatorGugusdepan = () => {
                     readOnly={!isEditable}
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="text-[#9500FF] font-bold mb-2 block">
-                  Pelatih:
-                </label>
-                <input
-                  type="text"
-                  value={data.pelatih || ""}
-                  onChange={(e) =>
-                    setData({ ...data, pelatih: e.target.value })
-                  }
-                  className="rounded-xl p-3 w-full border border-gray-300"
-                  readOnly={!isEditable}
-                />
+                <div>
+                  <label className="text-[#9500FF] font-bold mb-2 block">
+                    Pelatih:
+                  </label>
+                  <input
+                    type="text"
+                    value={data.pelatih || ""}
+                    onChange={(e) =>
+                      setData({ ...data, pelatih: e.target.value })
+                    }
+                    className="rounded-xl p-3 w-full border border-gray-300"
+                    readOnly={!isEditable}
+                  />
+                </div>
               </div>
             </div>
           )}

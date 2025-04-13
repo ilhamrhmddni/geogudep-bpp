@@ -369,9 +369,10 @@ const OperatorGeografis = () => {
                 <button
                   type="button"
                   onClick={handleGetCurrentLocation}
-                  className="bg-[#9500FF] text-white h-full p-3 ml-2 rounded-md hover:bg-[#7c00cc] font-bold"
+                  className="bg-[#9500FF] text-white p-2 ml-2 rounded-md hover:bg-[#7c00cc] font-bold h-full py-3"
+                  style={{ whiteSpace: "nowrap" }}
                 >
-                  📍 Lokasi Saya
+                  📍 Lokasi
                 </button>
               </div>
             </div>
