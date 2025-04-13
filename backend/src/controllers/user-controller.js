@@ -1,10 +1,18 @@
-const { User } = require("../models");
+const { User, Gudep } = require("../models");
 
 module.exports = {
   // Ambil semua user
   getAllUser: async (req, res) => {
     try {
-      const allUser = await User.findAll();
+      const allUser = await User.findAll({
+        include: [
+          {
+            model: Gudep, // Ganti dengan model yang sesuai jika berbeda
+            attributes: ["id", "no_gudep"], // Hanya ambil field yang diperlukan
+            as: "gudepes",
+          },
+        ],
+      });
 
       return res.status(200).json({
         message: "Data users berhasil didapatkan",
@@ -17,7 +25,6 @@ module.exports = {
       });
     }
   },
-
   // Ambil user berdasarkan ID
   getUser: async (req, res) => {
     const { id } = req.params;
@@ -65,18 +72,18 @@ module.exports = {
       const existingUser = await User.findOne({ where: { username } });
 
       if (existingUser) {
-        return res.status(400).json({ message: "Email sudah terdaftar" });
+        return res.status(400).json({ message: "Username sudah terdaftar" });
       }
 
       const newUser = await User.create({
         username,
         email,
-        password, // Harus di-hash sebelum disimpan
+        password,
         role,
         fullname,
         asal,
         no_telp,
-        photo_path: photo_path || "default-profile.png", // Beri default jika kosong
+        photo_path: photo_path, // Beri default jika kosong
       });
 
       return res.status(201).json({

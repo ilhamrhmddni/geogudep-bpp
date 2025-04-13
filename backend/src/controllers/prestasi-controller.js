@@ -76,16 +76,24 @@ module.exports = {
     }
 
     try {
+      // Cobalah untuk membuat prestasi baru
       const newPrestasi = await Prestasi.create({
         event_id,
         gudep_id,
         keterangan,
       });
+
       return res.status(201).json({
         message: "Relasi event dan gudep berhasil ditambahkan sebagai prestasi",
         data: newPrestasi,
       });
     } catch (error) {
+      if (error.name === "SequelizeUniqueConstraintError") {
+        return res.status(409).json({
+          message: "Prestasi dengan kombinasi event dan gudep ini sudah ada.",
+          error: error.message,
+        });
+      }
       return res.status(500).json({
         message: "Terjadi kesalahan server",
         error: error.message,

@@ -1,6 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
+const multer = require("multer");
+const axios = require("axios");
+const path = require("path");
 require("dotenv").config();
 const db = require("./src/models");
 
@@ -13,7 +16,44 @@ app.use(express.json()); // Parsing JSON request body
 app.use(express.urlencoded({ extended: true })); // Parsing URL-encoded data
 app.use(morgan("dev")); // Logging request
 
+// Konfigurasi Multer untuk upload file ke memory
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+// Custom middleware untuk Imgur upload
+const uploadToImgur = async (req, res, next) => {
+  if (req.file) {
+    try {
+      const imgurUpload = await axios({
+        method: "post",
+        url: "https://api.imgur.com/3/image",
+        headers: {
+          Authorization: `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
+        },
+        data: req.file.buffer,
+      });
+      req.imgurLink = imgurUpload.data.data.link; // Menyimpan link Imgur di request
+    } catch (error) {
+      console.error("Error uploading to Imgur:", error);
+      return res
+        .status(500)
+        .json({ message: "Gagal mengunggah foto ke Imgur" });
+    }
+  }
+  next();
+};
+
 // 🛠 Routes
+// Sebelum menggunakan rootRoutes, tambahkan middleware untuk upload ke Imgur
+app.use(
+  "/api/profile/update/:userId",
+  upload.single("photo"),
+  uploadToImgur,
+  (req, res, next) => {
+    // Setelah upload ke Imgur selesai, lanjutkan ke rootRoutes
+    next();
+  }
+);
 app.use(rootRoutes);
 
 // 🛠 Error Handling Global

@@ -45,7 +45,6 @@ module.exports = {
     }
   },
 
-  // Admin
 
   // Hapus data event berdasarkan ID
   deleteEvent: async (req, res) => {

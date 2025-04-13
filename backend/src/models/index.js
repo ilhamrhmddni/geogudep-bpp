@@ -22,10 +22,6 @@ db.Laporan = require("./Laporan");
 db.User.hasOne(db.Gudep, { foreignKey: "user_id", as: "gudepes" });
 db.Gudep.belongsTo(db.User, { foreignKey: "user_id", as: "useres" });
 
-// **User and Geografis (One-to-One)**
-db.User.hasOne(db.Geografis, { foreignKey: "user_id", as: "geografises" });
-db.Geografis.belongsTo(db.User, { foreignKey: "user_id", as: "useres" });
-
 // **Kwarran and Gudep (One-to-Many)**
 db.Kwarran.hasMany(db.Gudep, { foreignKey: "kwarran_id", as: "gudepesList" });
 db.Gudep.belongsTo(db.Kwarran, { foreignKey: "kwarran_id", as: "kwarranes" });
@@ -85,7 +81,10 @@ db.User.afterCreate(async (user) => {
       `🛠️ Membuat Gudep dan Geografis untuk user ${user.username}...`
     );
     const gudep = await db.Gudep.create({ user_id: user.id });
-    await db.Geografis.create({ gudep_id: gudep.id, user_id: user.id });
+    await db.Geografis.create({ gudep_id: gudep.id });
+    console.log(
+      `✅ Gudep dan Geografis berhasil dibuat untuk user ${user.username}`
+    );
   } catch (error) {
     console.error(`❌ Gagal membuat Gudep dan Geografis: ${error.message}`);
   }
