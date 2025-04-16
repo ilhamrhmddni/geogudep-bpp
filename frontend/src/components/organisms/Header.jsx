@@ -1,14 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import decodeToken from "./../../utils/jwt";
 
 const Header = () => {
   const navigate = useNavigate();
   const [profilePic, setProfilePic] = useState("/default-profile.png");
   const [isImageError, setIsImageError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [noGudep, setNoGudep] = useState(null);
 
-  const data = JSON.parse(localStorage.getItem("data")) || {};
-  const { user_id, username, role } = data;
+  const decodedToken = decodeToken(); // Dekode token untuk mendapatkan data pengguna
+  const { username, role, user_id } = decodedToken || {}; // Ambil data pengguna
+
+  const formatRole = (role) => {
+    if (!role) return "";
+    return role.charAt(0).toUpperCase() + role.slice(1);
+  };
 
   useEffect(() => {
     const fetchProfilePic = async () => {
@@ -22,16 +29,20 @@ const Header = () => {
         const result = await response.json();
 
         const path = result?.data?.photo_path;
-        if (response.ok && path && path.trim() && path !== "null") {
-          setProfilePic(path.trim());
+        const gudep = result?.data?.gudepes?.no_gudep;
+
+        if (response.ok) {
+          if (path && path.trim() && path !== "null") {
+            setProfilePic(path.trim());
+          }
+          if (gudep) {
+            setNoGudep(gudep);
+          }
         } else {
-          console.warn(
-            "⚠️ Gagal mengambil foto profil:",
-            result?.error || "photo_path kosong"
-          );
+          console.warn("⚠️ Gagal mengambil data user:", result?.error);
         }
       } catch (error) {
-        console.error("❌ Error fetching profile picture:", error);
+        console.error("❌ Error fetching user data:", error);
       } finally {
         setLoading(false);
       }
@@ -63,8 +74,11 @@ const Header = () => {
 
       <div className="flex items-center gap-3">
         <div className="flex flex-col text-right">
-          <p className="text-sm font-semibold">{username}</p>
-          <p className="text-[12px] text-[#9500FF]">{role}</p>
+          <p className="text-md font-semibold ">{username}</p>
+          <p className="text-[12px] text-[#9500FF]">
+            {formatRole(role)}
+            {noGudep ? ` - ${noGudep}` : ""}
+          </p>
         </div>
         <button
           onClick={handleNavigate}

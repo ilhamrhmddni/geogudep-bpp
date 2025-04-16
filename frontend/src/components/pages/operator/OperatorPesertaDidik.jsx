@@ -52,11 +52,12 @@ const OperatorPesertaDidik = () => {
   }, [gudepId]);
 
   const headers = [
-    { key: "nama", label: "Nama Peserta Didik" },
-    { key: "gender", label: "Gender" },
-    { key: "ttl", label: "Tempat, Tanggal Lahir" },
-    { key: "detailtingkatan", label: "Detail Tingkatan" },
-    { key: "actions", label: "Aksi" },
+    { key: "no", label: "No", width: "w-1/12" },
+    { key: "nama", label: "Nama Peserta Didik", width: "w-5/12" },
+    { key: "gender", label: "Jenis Kelamin", width: "w-1/12" },
+    { key: "ttl", label: "Tanggal Lahir", width: "w-2/12" },
+    { key: "detailtingkatan", label: "Detail Tingkatan", width: "w-2/12" },
+    { key: "actions", label: "Aksi", width: "w-1/12" },
   ];
 
   const handleSearchChange = (e) => setSearchQuery(e.target.value);
@@ -106,13 +107,20 @@ const OperatorPesertaDidik = () => {
     }
   };
 
-  const filteredData = data.filter((item) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      item.nama.toLowerCase().includes(query) ||
-      item.detailtingkatan.toLowerCase().includes(query)
-    );
-  });
+  const filteredData = data
+    .filter((item) => {
+      const query = searchQuery.toLowerCase();
+      return (
+        item.nama.toLowerCase().includes(query) ||
+        item.detailtingkatan.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      // Laki-laki (prioritas) harus muncul dulu
+      if (a.gender === "Laki-laki" && b.gender === "Perempuan") return -1;
+      if (a.gender === "Perempuan" && b.gender === "Laki-laki") return 1;
+      return 0; // sisanya tetap urutan aslinya
+    });
 
   return (
     <OperatorTemplate>
@@ -133,7 +141,7 @@ const OperatorPesertaDidik = () => {
           {error && <p className="text-center mt-4 text-red-500">{error}</p>}
 
           {!loading && filteredData.length === 0 ? (
-            <p className="text-center mt-4">Data tidak ditemukan.</p>
+            <p className="text-center mt-4 ">Data tidak ditemukan.</p>
           ) : (
             <TableCRUD
               headers={headers}

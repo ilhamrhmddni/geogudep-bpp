@@ -1,20 +1,21 @@
-// src/pages/AdminEvent.js
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // For navigation
-import AdminTemplate from "../../templates/AdminTemplate";
-import TableCRUD from "../../moleculs/TableCRUD"; // Update to use TableCRUD
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
+
+import AddButton from "../../atoms/AddButton";
 import SearchInput from "../../atoms/SearchInput";
-import AddButton from "../../atoms/AddButton"; // Import the AddButton component
-import { fetchEvents, deleteEvent } from "../../../services/EventService"; // Update to include CRUD services
+import TableCRUD from "../../moleculs/TableCRUD";
+import AdminTemplate from "../../templates/AdminTemplate";
+
+import { deleteEvent, fetchEvents } from "../../../services/EventService";
 
 const AdminEvent = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const navigate = useNavigate(); // Hook for navigating to another route
 
-  // Fetching Event data from API
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -22,9 +23,9 @@ const AdminEvent = () => {
         const result = await fetchEvents();
         setData(Array.isArray(result.data) ? result.data : []);
         setError(null);
-      } catch (error) {
-        setError("Error fetching data.");
-        console.error("Error fetching data:", error);
+      } catch (err) {
+        console.error("Error fetching events:", err);
+        setError("Gagal mengambil data.");
       } finally {
         setLoading(false);
       }
@@ -34,12 +35,14 @@ const AdminEvent = () => {
   }, []);
 
   const headers = [
-    { key: "nama", label: "Nama Event" },
-    { key: "tanggal_mulai", label: "Tanggal Mulai" },
-    { key: "tanggal_selesai", label: "Tanggal Selesai" },
-    { key: "tempat", label: "Tempat" },
-    { key: "tingkat", label: "Tingkat" },
-    { key: "penyelenggara", label: "Penyelenggara" },
+    { key: "no", label: "No", width: "w-1/20" },
+    { key: "nama", label: "Nama Event", width: "w-4/20" },
+    { key: "tanggal_mulai", label: "Tanggal Mulai", width: "w-2/20" },
+    { key: "tanggal_selesai", label: "Tanggal Selesai", width: "w-2/20" },
+    { key: "tempat", label: "Tempat", width: "w-3/20" },
+    { key: "tingkat", label: "Tingkat", width: "w-2/20" },
+    { key: "penyelenggara", label: "Penyelenggara", width: "w-3/20" },
+    { key: "actions", label: "Aksi", width: "w-1/20" },
   ];
 
   const handleSearchChange = (e) => {
@@ -51,35 +54,49 @@ const AdminEvent = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this event?")) {
+    const confirmDelete = await Swal.fire({
+      title: "Yakin ingin menghapus?",
+      text: "Data yang dihapus tidak dapat dikembalikan!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Ya, hapus!",
+    });
+
+    if (confirmDelete.isConfirmed) {
       try {
         await deleteEvent(id);
-        setData(data.filter((item) => item.id !== id)); // Update local state
-      } catch (error) {
-        console.error("Error deleting event:", error);
+        Swal.fire("Berhasil!", "Data berhasil dihapus.", "success");
+        setData((prevData) => prevData.filter((item) => item.id !== id));
+      } catch (err) {
+        console.error("Gagal menghapus event:", err);
+        Swal.fire("Gagal!", "Terjadi kesalahan saat menghapus.", "error");
       }
     }
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return "-";
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero-based
+    const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
-    return `${day}-${month}-${year}`; // Format: DD-MM-YYYY
+    return `${day}-${month}-${year}`;
   };
 
   const filteredData = data
     .filter((item) => {
-      const matchesSearch =
-        (item.nama ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.tempat ?? "").toLowerCase().includes(searchQuery.toLowerCase());
-
-      return matchesSearch;
+      const query = searchQuery.toLowerCase();
+      return (
+        (item.nama ?? "").toLowerCase().includes(query) ||
+        (item.tempat ?? "").toLowerCase().includes(query)
+      );
     })
-    .map((item) => ({
+    .map((item, index) => ({
       ...item,
-      tanggal_mulai: formatDate(item.tanggal_mulai), // Format the date for display
+      no: index + 1,
+      tanggal_mulai: formatDate(item.tanggal_mulai),
       tanggal_selesai: formatDate(item.tanggal_selesai),
     }));
 
@@ -95,20 +112,14 @@ const AdminEvent = () => {
               Data Event
             </span>
             <SearchInput value={searchQuery} onChange={handleSearchChange} />
-            <AddButton
-              route={"/admin/event/add"} // Assuming you have a route for adding events
-            />
+            <AddButton route="/admin/event/add" />
           </div>
 
-          {/* Loading state */}
-          {loading && <p className="text-center mt-4">Loading data...</p>}
-
-          {/* Error state */}
+          {loading && <p className="text-center mt-4">Memuat data...</p>}
           {error && <p className="text-center mt-4 text-red-500">{error}</p>}
 
-          {/* Displaying the table or message if no data found */}
-          {filteredData.length === 0 && !loading ? (
-            <p className="text-center mt-4">Data tidak ditemukan</p>
+          {!loading && filteredData.length === 0 ? (
+            <p className="text-center mt-4">Data tidak ditemukan.</p>
           ) : (
             <TableCRUD
               headers={headers}

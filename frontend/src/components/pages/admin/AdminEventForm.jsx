@@ -18,6 +18,15 @@ const AdminEventForm = ({ isEdit }) => {
   const navigate = useNavigate();
   const { id } = useParams();
 
+  const tingkatOptions = [
+    "Gugus Depan",
+    "Ranting",
+    "Cabang",
+    "Daerah",
+    "Nasional",
+    "Internasional",
+  ];
+
   // Fetch data if editing
   useEffect(() => {
     if (isEdit && id) {
@@ -55,6 +64,16 @@ const AdminEventForm = ({ isEdit }) => {
         icon: "warning",
         title: "Peringatan",
         text: "Pastikan semua data terisi dengan benar.",
+      });
+      return;
+    }
+
+    // Validasi tanggal
+    if (new Date(tanggalMulai) > new Date(tanggalSelesai)) {
+      Swal.fire({
+        icon: "error",
+        title: "Kesalahan",
+        text: "Tanggal mulai tidak boleh lebih lama dari tanggal selesai.",
       });
       return;
     }
@@ -173,13 +192,21 @@ const AdminEventForm = ({ isEdit }) => {
 
               <div className="flex flex-col">
                 <label className="mb-1 font-bold text-[#9500FF]">Tingkat</label>
-                <input
-                  type="text"
+                <select
                   value={tingkat}
                   onChange={(e) => setTingkat(e.target.value)}
                   className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                   required
-                />
+                >
+                  <option value="" disabled>
+                    Pilih Tingkat
+                  </option>
+                  {tingkatOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex flex-col">

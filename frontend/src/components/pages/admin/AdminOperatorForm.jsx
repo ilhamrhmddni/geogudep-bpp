@@ -9,69 +9,84 @@ import {
 import AdminTemplate from "../../templates/AdminTemplate";
 
 const AdminOperatorForm = ({ isEdit }) => {
+  // State untuk form
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [fullname, setFullname] = useState("");
-  const [asal, setAsal] = useState("");
-  const [noTelp, setNoTelp] = useState("");
-  const [noGudep, setNoGudep] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState("operator");
-  const [photo, setPhoto] = useState(null); // Tambahkan state untuk menyimpan file foto
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showViewPassword, setShowViewPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+
   const navigate = useNavigate();
   const { id } = useParams();
 
+  // Fetch data ketika component dimount
   useEffect(() => {
-    if (isEdit && id) {
-      const fetchData = async () => {
-        try {
-          const result = await fetchUserId(id);
-          const { data } = result;
-          setUsername(data.username || "");
-          setEmail(data.email);
-          setFullname(data.fullname);
-          setAsal(data.asal);
-          setNoTelp(data.no_telp);
-          setRole(data.role);
-          setNoGudep(data.no_gudep || "");
-        } catch (error) {
-          console.error("Error fetching data:", error);
-        }
-      };
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
 
-      fetchData();
-    } else {
-      setUsername(""); // Inisialisasi username kosong saat tambah baru
-      setPassword("");
-      setConfirmPassword("");
-    }
+      if (isEdit && id) {
+        // Mode edit: ambil data operator dari API
+        try {
+          const response = await fetchUserId(id);
+          setUsername(response.data.username);
+          setCurrentPassword(response.data.password || "");
+        } catch (err) {
+          console.error("Error fetching data:", err);
+          setError("Failed to fetch operator data.");
+          Swal.fire("Error!", "Failed to fetch operator data.", "error");
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // Mode tambah: reset form
+        setUsername("");
+        setPassword("");
+        setConfirmPassword("");
+        setShowChangePassword(true); // Di mode tambah, selalu tampilkan password field
+        setShowViewPassword(false);
+        setCurrentPassword("");
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [id, isEdit]);
 
-  useEffect(() => {
-    if (role === "admin") {
-      setNoGudep("ADMIN");
-    } else {
-      setNoGudep("");
-    }
-  }, [role]);
-
-  const handlePhotoChange = (e) => {
-    setPhoto(e.target.files[0]);
+  // Toggle tampilan form ubah password
+  const handleToggleChangePassword = () => {
+    setShowChangePassword(!showChangePassword);
+    // Reset password fields ketika toggle
+    setPassword("");
+    setConfirmPassword("");
   };
 
+  // Toggle tampilan password (show/hide)
+  const handleToggleViewPassword = () => {
+    setShowViewPassword(!showViewPassword);
+  };
+
+  // Handler submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+    setLoading(true);
 
-    if (password && password !== confirmPassword) {
+    // Cek apakah password dan konfirmasi password sama
+    if (showChangePassword && password !== confirmPassword) {
       Swal.fire({
         icon: "warning",
         title: "Peringatan",
         text: "Password baru dan konfirmasi password tidak cocok.",
       });
+      setLoading(false);
       return;
     }
 
+    // Konfirmasi sebelum submit
     const confirmSubmit = await Swal.fire({
       title: isEdit ? "Ubah Data Operator" : "Simpan Operator Baru",
       text: isEdit
@@ -86,44 +101,54 @@ const AdminOperatorForm = ({ isEdit }) => {
     });
 
     if (!confirmSubmit.isConfirmed) {
-      console.log("Form submission canceled.");
+      setLoading(false);
       return;
     }
 
-    const formData = new FormData();
-    formData.append("username", username);
-    formData.append("email", email);
-    formData.append("fullname", fullname);
-    formData.append("asal", asal);
-    formData.append("no_telp", noTelp);
-    formData.append("role", role);
-    formData.append("no_gudep", noGudep);
-    if (password) {
-      formData.append("password", password);
-    }
-    if (photo) {
-      formData.append("photo", photo);
-    }
-
     try {
-      if (isEdit && id) {
-        await editUser(id, formData);
-        Swal.fire("Sukses!", "Data operator berhasil diubah.", "success");
-      } else {
-        await createUser(formData);
-        Swal.fire("Sukses!", "Operator baru telah disimpan.", "success");
+      const userData = new FormData(); // Buat FormData
+
+      userData.append("username", username);
+      if (showChangePassword && password) {
+        userData.append("password", password); // Tambahkan password jika ada
       }
 
-      navigate("/admin/operator");
-    } catch (error) {
+      console.log("Data yang akan dikirim:", userData);
+
+      if (isEdit && id) {
+        // Mode edit: update data operator
+        const result = await editUser(id, userData);
+        console.log("Hasil update:", result);
+
+        Swal.fire("Sukses!", "Data operator berhasil diubah.", "success").then(
+          () => {
+            navigate("/admin/operator");
+          }
+        );
+      } else {
+        // Mode tambah: buat operator baru
+        const result = await createUser(userData);
+        console.log("Hasil create:", result);
+
+        Swal.fire("Sukses!", "Operator baru telah disimpan.", "success").then(
+          () => {
+            navigate("/admin/operator");
+          }
+        );
+      }
+    } catch (err) {
+      console.error("Error submitting form:", err);
+      setError("Terjadi kesalahan saat menyimpan data.");
       Swal.fire("Error!", "Terjadi kesalahan saat menyimpan data.", "error");
-      console.error("Error submitting form:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <AdminTemplate>
       <div className="flex flex-col">
+        {/* Header section with back button */}
         <div className="flex items-center p-4 m-auto w-full ml-20">
           <div
             className="flex items-center gap-4 font-bold text-xl px-4 py-2 bg-[#9500FF] rounded-md text-white cursor-pointer"
@@ -137,9 +162,30 @@ const AdminOperatorForm = ({ isEdit }) => {
           </h1>
         </div>
 
+        {/* Form section */}
         <div className="flex flex-auto items-center justify-center">
           <div className="p-8 bg-white rounded-lg shadow-xl text-left w-full mx-4 ml-24">
+            {/* Error message display */}
+            {error && (
+              <div
+                className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+                role="alert"
+              >
+                <strong className="font-bold">Error!</strong>
+                <span className="block sm:inline">{error}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Hidden username field for accessibility */}
+              <input
+                type="hidden"
+                autoComplete="username"
+                value={username}
+                name="username"
+              />
+
+              {/* Username field */}
               <div className="flex flex-col">
                 <label className="mb-1 font-bold text-[#9500FF]">
                   Username
@@ -150,108 +196,139 @@ const AdminOperatorForm = ({ isEdit }) => {
                   onChange={(e) => setUsername(e.target.value)}
                   className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                   required
+                  readOnly={isEdit}
+                  autoComplete="username"
                 />
               </div>
 
-              <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
-                  required
-                />
-              </div>
+              {/* Password fields for Add mode */}
+              {!isEdit && (
+                <>
+                  <div className="flex flex-col">
+                    <label className="mb-1 font-bold text-[#9500FF]">
+                      Password Baru
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                      autoComplete="new-password"
+                      required={!isEdit}
+                    />
+                  </div>
 
-              <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={fullname}
-                  onChange={(e) => setFullname(e.target.value)}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
-                />
-              </div>
+                  <div className="flex flex-col">
+                    <label className="mb-1 font-bold text-[#9500FF]">
+                      Konfirmasi Password Baru
+                    </label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                      autoComplete="new-password"
+                      required={!isEdit}
+                    />
+                  </div>
+                </>
+              )}
 
-              <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">Asal</label>
-                <input
-                  type="text"
-                  value={asal}
-                  onChange={(e) => setAsal(e.target.value)}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
-                />
-              </div>
+              {/* Password fields for Edit mode */}
+              {isEdit && (
+                <>
+                  {/* Current password display */}
+                  <div className="flex flex-col">
+                    <label className="mb-1 font-bold text-[#9500FF]">
+                      Password Saat Ini
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showViewPassword ? "text" : "password"}
+                        value={currentPassword}
+                        className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF] w-full"
+                        readOnly
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer"
+                        onClick={handleToggleViewPassword}
+                      >
+                        <span className="material-icons">
+                          {showViewPassword ? "visibility_off" : "visibility"}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">
-                  No. Telepon
-                </label>
-                <input
-                  type="text"
-                  value={noTelp}
-                  onChange={(e) => setNoTelp(e.target.value)}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
-                />
-              </div>
+                  {/* Toggle button to show/hide change password form */}
+                  {!showChangePassword && (
+                    <button
+                      type="button"
+                      className="text-[#9500FF] hover:text-[#7a00cc] font-semibold"
+                      onClick={handleToggleChangePassword}
+                    >
+                      Ubah Password
+                    </button>
+                  )}
 
-              <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">Role</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
-                >
-                  <option value="operator">Operator</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
+                  {/* Change password form */}
+                  {showChangePassword && (
+                    <>
+                      <div className="flex flex-col">
+                        <label className="mb-1 font-bold text-[#9500FF]">
+                          Password Baru
+                        </label>
+                        <input
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                          autoComplete="new-password"
+                          required={showChangePassword}
+                        />
+                      </div>
 
-              <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">
-                  Password Baru
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
-                />
-              </div>
+                      <div className="flex flex-col">
+                        <label className="mb-1 font-bold text-[#9500FF]">
+                          Konfirmasi Password Baru
+                        </label>
+                        <input
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                          autoComplete="new-password"
+                          required={showChangePassword}
+                        />
+                      </div>
 
-              <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">
-                  Konfirmasi Password
-                </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
-                />
-              </div>
+                      <button
+                        type="button"
+                        className="text-red-500 hover:text-red-700 font-semibold mt-2"
+                        onClick={handleToggleChangePassword}
+                      >
+                        Batal Ubah Password
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
 
-              {/* Input untuk upload foto */}
-              <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">
-                  Foto Profil
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
-                />
-              </div>
-
+              {/* Submit button */}
               <button
                 type="submit"
-                className="w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md hover:bg-[#7a00cc] transition duration-200"
+                className={`w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md hover:bg-[#7a00cc] transition duration-200 ${
+                  loading ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                disabled={loading}
               >
-                {isEdit ? "Simpan Perubahan" : "Simpan"}
+                {loading
+                  ? "Menyimpan..."
+                  : isEdit
+                  ? "Simpan Perubahan"
+                  : "Simpan"}
               </button>
             </form>
           </div>

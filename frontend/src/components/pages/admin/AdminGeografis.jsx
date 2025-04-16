@@ -64,21 +64,31 @@ const AdminGeografis = () => {
 
   const filteredData = data
     .map((item) => {
+      const noGudepValue = item.gudepes?.no_gudep || null;
+      const latitudeValue = item.latitude || null;
+      const longitudeValue = item.longitude || null;
+
       return {
         ...item,
-        no_gudep: item.gudepes?.no_gudep || "-", // Periksa akses ini
+        no_gudep: noGudepValue ? noGudepValue : "-",
         maps_link: (
           <a
-            href={`https://www.google.com/maps?q=${item.latitude},${item.longitude}`}
+            href={`https://www.google.com/maps?q=$${latitudeValue},${longitudeValue}`}
             target="_blank"
             rel="noopener noreferrer"
           >
-            <button className="px-3 py-1 bg-[#9500FF] text-white rounded hover:bg-[#590396] transition cursor-pointer">
+            <button
+              className="px-3 py-1 bg-[#9500FF] text-white rounded hover:bg-[#590396] transition cursor-pointer"
+              disabled={!latitudeValue || !longitudeValue}
+            >
               📍 Lihat di Maps
             </button>
           </a>
         ),
-        titik_koordinat: `${item.latitude}, ${item.longitude}`,
+        titik_koordinat:
+          latitudeValue && longitudeValue
+            ? `${latitudeValue}, ${longitudeValue}`
+            : "-",
       };
     })
     .filter((item) => {
@@ -86,15 +96,19 @@ const AdminGeografis = () => {
         (item.alamat ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.latitude ?? "").toString().includes(searchQuery) ||
         (item.longitude ?? "").toString().includes(searchQuery) ||
-        (item.no_gudep ?? "").toLowerCase().includes(searchQuery.toLowerCase());
+        (item.no_gudep === "Data belum tersedia"
+          ? false
+          : (item.no_gudep ?? "")
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase()));
 
       const matchesKwarran = selectedKwarran
         ? item.Gudep?.kwarran_id === selectedKwarran
         : true;
 
-      const isNotAdmin = item.gudepes?.no_gudep !== "ADMIN"; // Filter item yang tidak memiliki gudep ADMIN
+      const isNotAdmin = item.gudepes?.no_gudep !== "ADMIN";
 
-      return matchesSearch && matchesKwarran && isNotAdmin; // Filter berdasarkan semua kriteria
+      return matchesSearch && matchesKwarran && isNotAdmin;
     });
 
   return (

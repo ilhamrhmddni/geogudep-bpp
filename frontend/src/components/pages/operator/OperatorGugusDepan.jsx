@@ -125,7 +125,7 @@ const OperatorGugusdepan = () => {
                   className="bg-white text-[#9500FF] px-4 py-2 rounded-2xl border-2 border-[#9500FF] cursor-pointer font-bold flex gap-2"
                 >
                   <span className="material-icons">edit</span>
-                  Edit
+                  Ubah
                 </button>
               )}
             </div>
@@ -164,35 +164,6 @@ const OperatorGugusdepan = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
-                    No. Gudep:
-                  </label>
-                  <input
-                    type="text"
-                    value={noGudep}
-                    onChange={(e) => setNoGudep(e.target.value)}
-                    className="rounded-xl p-3 w-full border border-gray-300"
-                    placeholder="Masukkan No. Gudep"
-                    readOnly={!isEditable}
-                  />
-                </div>
-                <div>
-                  <label className="text-[#9500FF] font-bold mb-2 block">
-                    Pangkalan:
-                  </label>
-                  <input
-                    type="text"
-                    value={pangkalan} // Controlled input for Pangkalan
-                    onChange={(e) => setPangkalan(e.target.value)}
-                    className="rounded-xl p-3 w-full border border-gray-300"
-                    readOnly={!isEditable}
-                    placeholder="Masukkan Pangkalan"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[#9500FF] font-bold mb-2 block">
                     Kwarran:
                   </label>
                   <select
@@ -200,7 +171,9 @@ const OperatorGugusdepan = () => {
                     onChange={(e) =>
                       setData({ ...data, kwarran_id: e.target.value })
                     }
-                    className="rounded-xl p-3 w-full border border-gray-300"
+                    className={`rounded-xl p-3 w-full border border-gray-300 ${
+                      !isEditable ? "bg-gray-100" : ""
+                    }`}
                     disabled={!isEditable}
                   >
                     <option value="">Pilih Kwarran</option>
@@ -220,7 +193,9 @@ const OperatorGugusdepan = () => {
                     onChange={(e) =>
                       setData({ ...data, tingkatan: e.target.value })
                     }
-                    className="rounded-xl p-3 w-full border border-gray-300"
+                    className={`rounded-xl p-3 w-full border border-gray-300 ${
+                      !isEditable ? "bg-gray-100" : ""
+                    }`}
                     disabled={!isEditable}
                   >
                     <option value="">Pilih Tingkatan</option>
@@ -231,7 +206,38 @@ const OperatorGugusdepan = () => {
                   </select>
                 </div>
               </div>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[#9500FF] font-bold mb-2 block">
+                    No. Gudep:
+                  </label>
+                  <input
+                    type="text"
+                    value={noGudep}
+                    onChange={(e) => setNoGudep(e.target.value)}
+                    className={`rounded-xl p-3 w-full border border-gray-300 ${
+                      !isEditable ? "bg-gray-100" : ""
+                    }`}
+                    placeholder="Masukkan No. Gudep"
+                    readOnly={!isEditable}
+                  />
+                </div>
+                <div>
+                  <label className="text-[#9500FF] font-bold mb-2 block">
+                    Pangkalan:
+                  </label>
+                  <input
+                    type="text"
+                    value={pangkalan} // Controlled input for Pangkalan
+                    onChange={(e) => setPangkalan(e.target.value)}
+                    className={`rounded-xl p-3 w-full border border-gray-300 ${
+                      !isEditable ? "bg-gray-100" : ""
+                    }`}
+                    readOnly={!isEditable}
+                    placeholder="Masukkan Pangkalan"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="text-[#9500FF] font-bold mb-2 block">
                   Mabigus:
@@ -242,8 +248,11 @@ const OperatorGugusdepan = () => {
                   onChange={(e) =>
                     setData({ ...data, mabigus: e.target.value })
                   }
-                  className="rounded-xl p-3 w-full border border-gray-300"
+                  className={`rounded-xl p-3 w-full border border-gray-300 ${
+                    !isEditable ? "bg-gray-100" : ""
+                  }`}
                   readOnly={!isEditable}
+                  placeholder="Masukkan Nama Mabigus"
                 />
               </div>
 
@@ -258,8 +267,11 @@ const OperatorGugusdepan = () => {
                     onChange={(e) =>
                       setData({ ...data, pembina: e.target.value })
                     }
-                    className="rounded-xl p-3 w-full border border-gray-300"
+                    className={`rounded-xl p-3 w-full border border-gray-300 ${
+                      !isEditable ? "bg-gray-100" : ""
+                    }`}
                     readOnly={!isEditable}
+                    placeholder="Masukkan Nama Pembina"
                   />
                 </div>
                 <div>
@@ -272,8 +284,11 @@ const OperatorGugusdepan = () => {
                     onChange={(e) =>
                       setData({ ...data, pelatih: e.target.value })
                     }
-                    className="rounded-xl p-3 w-full border border-gray-300"
+                    className={`rounded-xl p-3 w-full border border-gray-300 ${
+                      !isEditable ? "bg-gray-100" : ""
+                    }`}
                     readOnly={!isEditable}
+                    placeholder="Masukkan Nama Pelatih"
                   />
                 </div>
               </div>

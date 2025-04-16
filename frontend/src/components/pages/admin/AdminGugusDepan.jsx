@@ -14,13 +14,11 @@ const AdminGugusdepan = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch Gugusdepan data from API
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         const result = await fetchGugusdepan();
-        console.log("Data Gugusdepan:", result.data);
         setData(Array.isArray(result.data) ? result.data : []);
         setError(null);
       } catch (error) {
@@ -34,7 +32,6 @@ const AdminGugusdepan = () => {
     fetchData();
   }, []);
 
-  // Fetch Kwarran data from API
   useEffect(() => {
     const fetchKwarranData = async () => {
       try {
@@ -49,17 +46,16 @@ const AdminGugusdepan = () => {
   }, []);
 
   const headers = [
-    { key: "no_gudep", label: "No. Gudep" },
-    { key: "kwarran_nama", label: "Kwarran" },
-    { key: "tingkatan", label: "Tingkatan" },
-    { key: "pangkalan", label: "Pangkalan" }, // Added Pangkalan header
-    { key: "jumlah_putra", label: "Jumlah Putra" },
-    { key: "jumlah_putri", label: "Jumlah Putri" },
-    { key: "email", label: "Email" },
-    { key: "tahun_update", label: "Tanggal Update" },
-    { key: "mabigus", label: "Mabigus" },
-    { key: "pembina", label: "Pembina" },
-    { key: "pelatih", label: "Pelatih" },
+    { key: "no", label: "No", width: "w-1/20" },
+    { key: "no_gudep", label: "No. Gudep", width: "w-1/20" },
+    { key: "kwarran_nama", label: "Kwarran", width: "w-2/20" },
+    { key: "tingkatan", label: "Tingkatan", width: "w-1/20" },
+    { key: "pangkalan", label: "Pangkalan", width: "w-2/20" },
+    { key: "jumlah_putra", label: "Jumlah Putra", width: "w-1/20" },
+    { key: "jumlah_putri", label: "Jumlah Putri", width: "w-1/20" },
+    { key: "email", label: "Email", width: "w-3/20" },
+    { key: "detail", label: "Detail", width: "w-1/20" },
+    { key: "tahun_update", label: "Tanggal Update", width: "w-1/20" },
   ];
 
   const handleSearchChange = (e) => setSearchQuery(e.target.value);
@@ -78,8 +74,6 @@ const AdminGugusdepan = () => {
 
   const filteredData = data
     .filter((item) => {
-      console.log("Item sebelum filter:", item);
-
       const matchesSearch =
         (item.no_gudep ?? "")
           .toLowerCase()
@@ -101,27 +95,42 @@ const AdminGugusdepan = () => {
         ? item.tingkatan === selectedTingkatan
         : true;
 
-      // Ensure that the role of the user is not admin
       const isNotAdmin = item.useres?.role !== "admin";
-
-      console.log("Matches:", {
-        matchesSearch,
-        matchesKwarran,
-        matchesTingkatan,
-        isNotAdmin,
-      });
 
       return matchesSearch && matchesKwarran && matchesTingkatan && isNotAdmin;
     })
-    .map((item) => {
-      console.log("Item setelah filter:", item);
-      return {
-        ...item,
-        kwarran_nama:
-          kwarranList.find((k) => k.id === item.kwarran_id)?.nama || "-",
-        tahun_update: formatDate(item.tahun_update),
-      };
-    });
+    .map((item) => ({
+      ...item,
+      kwarran_nama:
+        kwarranList.find((k) => k.id === item.kwarran_id)?.nama || "-",
+      tahun_update: formatDate(item.tahun_update),
+    }));
+
+  // Custom cell renderer for the "detail" column to show popup on hover
+  const renderDetailCell = (item) => {
+    return (
+      <div className="relative group cursor-pointer">
+        <span className="text-blue-600 underline">Lihat</span>
+        <div className="absolute z-10 hidden group-hover:block bg-white border border-gray-300 rounded shadow-lg p-3 w-64 top-full left-1/2 transform -translate-x-1/2 mt-2">
+          <p>
+            <strong>Mabigus:</strong> {item.mabigus || "-"}
+          </p>
+          <p>
+            <strong>Pembina:</strong> {item.pembina || "-"}
+          </p>
+          <p>
+            <strong>Pelatih:</strong> {item.pelatih || "-"}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  // Prepare data for TableR, replacing "detail" key with the popup component
+  const tableData = filteredData.map((item) => ({
+    ...item,
+    detail: renderDetailCell(item),
+  }));
 
   return (
     <AdminTemplate>
@@ -136,7 +145,6 @@ const AdminGugusdepan = () => {
             </span>
             <SearchInput value={searchQuery} onChange={handleSearchChange} />
 
-            {/* Dropdown Kwarran */}
             <select
               value={selectedKwarran}
               onChange={handleKwarranChange}
@@ -156,7 +164,6 @@ const AdminGugusdepan = () => {
               ))}
             </select>
 
-            {/* Dropdown Tingkatan */}
             <select
               value={selectedTingkatan}
               onChange={handleTingkatanChange}
@@ -183,15 +190,13 @@ const AdminGugusdepan = () => {
             </select>
           </div>
 
-          {/* Loading & Error Messages */}
           {loading && <p className="text-center mt-4">Loading data...</p>}
           {error && <p className="text-center mt-4 text-red-500">{error}</p>}
 
-          {/* Display table or message if no data found */}
-          {filteredData.length === 0 && !loading ? (
+          {tableData.length === 0 && !loading ? (
             <p className="text-center mt-4">Data tidak ditemukan</p>
           ) : (
-            <TableR headers={headers} data={filteredData} />
+            <TableR headers={headers} data={tableData} />
           )}
         </div>
       </div>

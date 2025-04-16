@@ -91,9 +91,9 @@ const OperatorGeografis = () => {
     alamat: "",
   });
 
-  const [position, setPosition] = useState([0, 0]);
-  const [userLocation, setUserLocation] = useState(null);
-  const [oldPosition, setOldPosition] = useState(null);
+  const [position, setPosition] = useState([0, 0]); // Posisi marker (bisa awal Gudep atau yang dipilih saat edit)
+  const [userLocation, setUserLocation] = useState(null); // Lokasi pengguna saat ini (merah)
+  const [initialGudepLocation, setInitialGudepLocation] = useState(null); // Lokasi awal Gudep (biru, hanya saat tidak edit)
   const [isEditable, setIsEditable] = useState(false);
   const [hasChanged, setHasChanged] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,9 +110,11 @@ const OperatorGeografis = () => {
 
   const handleEditClick = () => {
     console.log("🛠️ Edit mode aktif");
+    console.log("ℹ️ formData saat edit:", { ...formData });
     setIsEditable(true);
-    setUserLocation(null);
+    setUserLocation(null); // Hilangkan marker merah saat edit
     setShouldCenterInEditMode(false);
+    setPosition(initialGudepLocation || [0, 0]); // Set posisi marker ke lokasi awal Gudep saat mulai edit
   };
 
   const handleSubmit = async (e) => {
@@ -138,7 +140,6 @@ const OperatorGeografis = () => {
         Swal.fire("Berhasil", "Data geografis berhasil diperbarui", "success");
         setIsEditable(false);
         setHasChanged(false);
-        setUserLocation(null);
         navigate("/operator/geografis");
       } catch (error) {
         console.error("Error updating geografis:", error);
@@ -159,9 +160,11 @@ const OperatorGeografis = () => {
         const { latitude, longitude } = positionData.coords;
         console.log("Lokasi ditemukan:", latitude, longitude);
 
+        const currentLocation = [latitude, longitude];
+        setUserLocation(currentLocation);
+
         if (isEditable) {
-          setOldPosition([latitude, longitude]);
-          setPosition([latitude, longitude]);
+          setPosition(currentLocation); // Set posisi yang diedit ke lokasi saat ini
           setFormData((prevData) => ({
             ...prevData,
             latitude,
@@ -169,18 +172,17 @@ const OperatorGeografis = () => {
             titik_koordinat: `${latitude}, ${longitude}`,
           }));
           setHasChanged(true);
-          setMapCenter([latitude, longitude]);
+          setMapCenter(currentLocation);
           setShouldCenterInEditMode(true);
         } else {
-          setUserLocation([latitude, longitude]);
-          setPosition([latitude, longitude]);
+          setPosition(currentLocation);
           setFormData((prevData) => ({
             ...prevData,
             latitude,
             longitude,
             titik_koordinat: `${latitude}, ${longitude}`,
           }));
-          setMapCenter([latitude, longitude]);
+          setMapCenter(currentLocation);
         }
 
         setTimeout(() => {
@@ -203,8 +205,8 @@ const OperatorGeografis = () => {
         const { lat, lng } = e.latlng;
         console.log("📍 Klik di peta:", lat, lng);
 
-        setOldPosition([lat, lng]);
-        setPosition([lat, lng]);
+        const clickedLocation = [lat, lng];
+        setPosition(clickedLocation); // Update posisi marker saat klik di peta
         setFormData((prevData) => ({
           ...prevData,
           latitude: lat,
@@ -221,11 +223,11 @@ const OperatorGeografis = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setIsLoading(true);
         const result = await fetchGeografisId(geografisId);
         const data = result.data;
 
         console.log("✅ Data geografis berhasil diambil:", data);
-
         setFormData({
           titik_koordinat: data.titik_koordinat || "",
           longitude: data.longitude || "",
@@ -236,14 +238,13 @@ const OperatorGeografis = () => {
         if (data.latitude && data.longitude) {
           const coords = [data.latitude, data.longitude];
           setPosition(coords);
-          setOldPosition(coords);
+          setInitialGudepLocation(coords); // Simpan lokasi awal Gudep
           setMapCenter(coords);
-          console.log("🧭 Set posisi awal:", coords);
+          console.log("🧭 Set posisi awal:", coords, "formData:", {
+            ...formData,
+          });
         }
 
-        if (!isEditable) {
-          setUserLocation(null);
-        }
         setIsLoading(false);
       } catch (error) {
         console.error("❌ Error fetching data:", error);
@@ -252,7 +253,12 @@ const OperatorGeografis = () => {
     };
 
     if (geografisId) fetchData();
-  }, [geografisId, isEditable]);
+  }, [geografisId]);
+
+  useEffect(() => {
+    // Ambil lokasi awal pengguna saat komponen mount
+    handleGetCurrentLocation();
+  }, []);
 
   return (
     <OperatorTemplate>
@@ -280,7 +286,7 @@ const OperatorGeografis = () => {
                   className="bg-white text-[#9500FF] px-4 py-2 rounded-2xl border-2 border-[#9500FF] cursor-pointer font-bold flex gap-2"
                 >
                   <span className="material-icons">edit</span>
-                  Edit
+                  Ubah
                 </button>
               )}
             </div>
@@ -306,15 +312,24 @@ const OperatorGeografis = () => {
                   shouldCenter={shouldCenterInEditMode}
                 />
 
-                {oldPosition && (
-                  <Marker position={oldPosition} icon={blueIcon}>
+                {/* Marker untuk lokasi awal Gudep (hanya tampil saat tidak edit) */}
+                {!isEditable && initialGudepLocation && (
+                  <Marker position={initialGudepLocation} icon={blueIcon}>
                     <Popup>Lokasi Gudep</Popup>
                   </Marker>
                 )}
 
+                {/* Marker untuk lokasi pengguna (merah) */}
                 {!isEditable && userLocation && (
                   <Marker position={userLocation} icon={redIcon}>
-                    <Popup>Lokasi Saya Sekarang</Popup>
+                    <Popup>Lokasi Saya</Popup>
+                  </Marker>
+                )}
+
+                {/* Marker untuk lokasi yang sedang diedit (biru) */}
+                {isEditable && position[0] !== 0 && position[1] !== 0 && (
+                  <Marker position={position} icon={blueIcon}>
+                    <Popup>Lokasi yang Diedit</Popup>
                   </Marker>
                 )}
 
@@ -334,8 +349,10 @@ const OperatorGeografis = () => {
                   name="latitude"
                   value={formData.latitude}
                   onChange={handleChange}
-                  readOnly
-                  className="rounded p-3 w-full border border-gray-300 bg-gray-100"
+                  readOnly={!isEditable}
+                  className={`rounded p-3 w-full border border-gray-300 ${
+                    !isEditable ? "bg-gray-100" : ""
+                  }`}
                 />
               </div>
               <div className="flex-1">
@@ -347,8 +364,10 @@ const OperatorGeografis = () => {
                   name="longitude"
                   value={formData.longitude}
                   onChange={handleChange}
-                  readOnly
-                  className="rounded p-3 w-full border border-gray-300 bg-gray-100"
+                  readOnly={!isEditable}
+                  className={`rounded p-3 w-full border border-gray-300 ${
+                    !isEditable ? "bg-gray-100" : ""
+                  }`}
                 />
               </div>
             </div>
@@ -363,8 +382,10 @@ const OperatorGeografis = () => {
                   name="titik_koordinat"
                   value={formData.titik_koordinat}
                   onChange={handleChange}
-                  readOnly
-                  className="rounded p-3 w-full border border-gray-300 bg-gray-100"
+                  readOnly={!isEditable}
+                  className={`rounded p-3 w-full border border-gray-300 ${
+                    !isEditable ? "bg-gray-100" : ""
+                  }`}
                 />
                 <button
                   type="button"

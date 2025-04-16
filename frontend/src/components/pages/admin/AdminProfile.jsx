@@ -20,6 +20,17 @@ const AdminProfile = () => {
   const [photoPreview, setPhotoPreview] = useState(null);
   const navigate = useNavigate();
 
+  const formData = new FormData();
+  formData.append("username", userData.username);
+  formData.append("email", userData.email);
+  formData.append("fullname", userData.fullname);
+  formData.append("asal", userData.asal);
+  formData.append("no_telp", userData.no_telp);
+
+  // Pastikan nama field untuk foto sesuai dengan yang diharapkan backend
+  if (photo) {
+    formData.append("photo_path", photo); // Perhatikan: gunakan "photo" bukan "photo_path"
+  }
   useEffect(() => {
     const decoded = decodeToken();
     if (!decoded) {
@@ -59,6 +70,12 @@ const AdminProfile = () => {
   const handleUserUpdate = async (e) => {
     e.preventDefault();
 
+    // Di dalam fungsi handleUserUpdate sebelum mengirim request
+    console.log("FormData contents:");
+    for (let pair of formData.entries()) {
+      console.log(pair[0] + ": " + pair[1]);
+    }
+
     Swal.fire({
       title: "Ubah Profil",
       text: "Apakah Anda yakin ingin memperbarui profil?",
@@ -73,25 +90,34 @@ const AdminProfile = () => {
         setError(null);
 
         try {
-          const decoded = decodeToken();
-          if (!decoded) {
-            setError("Token invalid or not found");
-            return;
-          }
-
-          const userId = decoded.user_id;
           const formData = new FormData();
           formData.append("username", userData.username);
           formData.append("email", userData.email);
           formData.append("fullname", userData.fullname);
           formData.append("asal", userData.asal);
           formData.append("no_telp", userData.no_telp);
+
+          // Only append the file to formData if a new photo was selected
           if (photo) {
-            formData.append("photo", photo);
+            formData.append("photo_path", photo);
           }
 
-          await editUser(userId, formData);
-          Swal.fire("Berhasil!", "Profil Anda telah diperbarui.", "success");
+          const decoded = decodeToken();
+          if (!decoded) {
+            throw new Error("Token invalid or not found");
+          }
+
+          // Use the editUser function from your service
+          const response = await editUser(decoded.user_id, formData);
+
+          if (response && response.message === "User berhasil diperbarui") {
+            // Refresh data pengguna setelah update berhasil
+            await fetchUserData(decoded.user_id);
+
+            Swal.fire("Berhasil!", "Profil Anda telah diperbarui.", "success");
+          } else {
+            throw new Error("Terjadi kesalahan saat memperbarui profil");
+          }
         } catch (error) {
           setError(error.message);
           Swal.fire("Gagal!", error.message, "error");
@@ -115,7 +141,7 @@ const AdminProfile = () => {
           </div>
 
           <h1 className="text-3xl font-bold flex-grow text-center mr-24 text-[#9500FF]">
-            Edit Profil
+            Ubah Profil
           </h1>
         </div>
 
@@ -132,7 +158,7 @@ const AdminProfile = () => {
                     onChange={(e) =>
                       setUserData({ ...userData, username: e.target.value })
                     }
-                    className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                    className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF] bg-gray-100 "
                     required
                   />
                 </div>
@@ -160,7 +186,7 @@ const AdminProfile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold">Origin</label>
+                  <label className="mb-1 font-semibold">Asal</label>
                   <input
                     type="text"
                     value={userData.asal || ""}
@@ -171,7 +197,7 @@ const AdminProfile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold">Phone Number</label>
+                  <label className="mb-1 font-semibold">No Telp</label>
                   <input
                     type="text"
                     value={userData.no_telp || ""}
@@ -186,7 +212,7 @@ const AdminProfile = () => {
                   className="w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md hover:bg-[#9500FF] transition duration-200"
                   disabled={loading}
                 >
-                  {loading ? "Updating..." : "Update Profile"}
+                  {loading ? "Processing..." : "Update Profile"}
                 </button>
                 {error && <p className="text-red-500 mt-2">{error}</p>}
               </form>
@@ -212,6 +238,7 @@ const AdminProfile = () => {
                 onChange={handlePhotoChange}
                 className="mb-4"
               />
+              {loading && <p className="text-blue-500">Uploading image...</p>}
             </div>
           </div>
         </div>

@@ -147,6 +147,7 @@ const OperatorPrestasiForm = ({ isEdit }) => {
                   onChange={(e) => setKeterangan(e.target.value)}
                   className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                   required
+                  placeholder="Masukkan Prestasi keseluruhan dalam Event tersebut "
                 />
               </div>
 

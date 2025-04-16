@@ -1,5 +1,3 @@
-// src/services/UserService.js
-
 // URL dasar API
 const API_URL = "http://localhost:3000/";
 
@@ -8,35 +6,39 @@ export const fetchUserId = async (id) => {
   try {
     const response = await fetch(`${API_URL}user/${id}`);
     if (!response.ok) {
-      throw new Error("Failed to fetch user data");
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
-    return data; // Pastikan data yang dikembalikan sesuai dengan struktur yang diharapkan
+    console.log(`Data dari API (fetchUserId dengan ID ${id}):`, data);
+    return data;
   } catch (error) {
-    console.error("Error fetching user by ID:", error);
-    throw error;
+    console.error(`Error fetching user with ID ${id}:`, error);
+    throw error; // Throw error untuk penanganan di komponen
   }
 };
 
 // Fungsi untuk mengedit data User
-export const editUser = async (id, item) => {
+export const editUser = async (id, userData) => {
   try {
+    console.log("Form data yang dikirim:", userData); // Debugging data
+
+    // Penting: Gunakan JSON.stringify() untuk mengubah objek JavaScript ke JSON
     const response = await fetch(`${API_URL}user/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(item),
+      body: userData, // Kirim FormData langsung tanpa header Content-Type
     });
 
     if (!response.ok) {
-      throw new Error("Failed to edit user");
+      const errorMessage = await response.text();
+      console.error("Error response:", errorMessage);
+      throw new Error(`Failed to update user profile: ${errorMessage}`);
     }
 
-    const updatedItem = await response.json();
-    return updatedItem;
+    const result = await response.json();
+    console.log("User profile updated:", result);
+    return result;
   } catch (error) {
-    console.error("Error editing user:", error);
+    console.error("Error updating user profile:", error);
     throw error;
   }
 };
@@ -52,7 +54,7 @@ export const deleteUser = async (id) => {
       throw new Error("Failed to delete user");
     }
 
-    const result = await response.json(); // Mendapatkan respon sukses dari server
+    const result = await response.json();
     return result;
   } catch (error) {
     console.error("Error deleting user:", error);
@@ -69,7 +71,7 @@ export const fetchUsers = async () => {
       throw new Error("Failed to fetch user data");
     }
 
-    const data = await response.json(); // Mengambil data dalam bentuk JSON
+    const data = await response.json();
     return data;
   } catch (error) {
     console.error("Error fetching users:", error);
@@ -78,21 +80,27 @@ export const fetchUsers = async () => {
 };
 
 // Fungsi untuk membuat User baru
-export const createUser = async (data) => {
+export const createUser = async (userData) => {
   try {
+    console.log("Data user baru yang dikirim:", userData); // Debugging data
+
     const response = await fetch(`${API_URL}user`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(userData),
     });
 
     if (!response.ok) {
-      throw new Error("Failed to create user");
+      const errorMessage = await response.text();
+      console.error("Error response:", errorMessage);
+      throw new Error(`Failed to create user: ${errorMessage}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log("User created:", result);
+    return result;
   } catch (error) {
     console.error("Error creating user:", error);
     throw error;
@@ -102,9 +110,9 @@ export const createUser = async (data) => {
 export const fetchProfile = async (userId) => {
   try {
     const response = await fetch(`${API_URL}user/${userId}`);
-    const result = await response.json(); // Parse JSON
+    const result = await response.json();
 
-    console.log("API Response:", result); // Debugging: lihat isi response
+    console.log("API Response:", result);
 
     if (!response.ok) {
       throw new Error(
@@ -112,7 +120,7 @@ export const fetchProfile = async (userId) => {
       );
     }
 
-    return result.data; // Ambil hanya bagian "data"
+    return result.data;
   } catch (error) {
     console.error("Error fetching user by ID:", error);
     throw error;

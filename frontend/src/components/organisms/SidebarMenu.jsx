@@ -79,12 +79,16 @@ const SidebarMenu = ({
 
       <div className="md:mt-48 lg:mt-54 xl:mt-88">{rightIcon}</div>
 
-      <div className="flex flex-col justify-end mb-4 items-center">
+      <div
+        className="fixed bottom-0 left-0 w-full p-4 z-30 flex justify-center items-center transition-transform duration-300 mb-8"
+        style={{ transform: "translateX(0px)" }}
+      >
         <button
           onClick={handleLogout}
-          className="w-3/6 p-1 text-[#9500FF] font-bold bg-white rounded hover:bg-[#9500FF] hover:text-white transition duration-300 hover:cursor-pointer"
+          className="bg-[#9500FF] text-white px-12 py-2 font-bold transition-transform hover:bg-white hover:text-[#9500FF] cursor-pointer rounded-full flex gap-4"
         >
-          Logout
+          Keluar
+          <span className="material-icons">logout</span>
         </button>
       </div>
     </div>

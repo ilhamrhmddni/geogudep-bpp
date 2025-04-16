@@ -10,7 +10,11 @@ import {
   editPesertadidik,
   fetchPesertadidikById,
 } from "../../../services/PesertadidikService";
+import decodeToken from "../../../utils/jwt";
 import OperatorTemplate from "../../templates/OperatorTemplate";
+
+const tokenData = decodeToken();
+const gudepId = tokenData?.gudep_id;
 
 const OperatorPesertaDidikForm = ({ isEdit }) => {
   const [formData, setFormData] = useState({
@@ -18,7 +22,7 @@ const OperatorPesertaDidikForm = ({ isEdit }) => {
     gender: "",
     ttl: "",
     detailtingkatan: "",
-    gudep_id: localStorage.getItem("gudep_id") || "",
+    gudep_id: gudepId,
   });
 
   const navigate = useNavigate();
@@ -151,6 +155,7 @@ const OperatorPesertaDidikForm = ({ isEdit }) => {
                   onChange={handleChange}
                   required
                   className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                  placeholder="Masukkan Nama Peserta Didik"
                 />
               </div>
 
@@ -196,6 +201,7 @@ const OperatorPesertaDidikForm = ({ isEdit }) => {
                   onChange={handleChange}
                   required
                   className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                  placeholder="Masukkan Detail Tingkatan Peserta Didik"
                 />
               </div>
 

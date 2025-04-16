@@ -36,7 +36,7 @@ const OperatorProfile = () => {
     try {
       const data = await fetchProfile(userId);
       setUserData(data);
-      setPhotoPreview(data.photo_path || null);
+      setPhotoPreview(data.photo_path || null); // Mengatur preview foto dengan path yang benar
     } catch (error) {
       setError(error.message);
     }
@@ -89,10 +89,14 @@ const OperatorProfile = () => {
           formData.append("asal", userData.asal);
           formData.append("no_telp", userData.no_telp);
           if (photo) {
-            formData.append("photo", photo);
+            formData.append("photo_path", photo); // Foto yang diupload
           }
 
-          await editUser(userId, formData);
+          const updatedUser = await editUser(userId, formData);
+
+          // Ambil data pengguna lagi untuk memastikan semua informasi terbaru ditampilkan
+          await fetchUserData(userId); // Memanggil fungsi untuk mengambil data pengguna
+
           setSuccessMessage("Profil berhasil diperbarui!");
           Swal.fire("Berhasil!", "Profil Anda telah diperbarui.", "success");
         } catch (error) {
@@ -128,19 +132,24 @@ const OperatorProfile = () => {
             <div className="w-1/2 pr-4">
               <form onSubmit={handleUserUpdate} className="space-y-4">
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold">Username</label>
+                  <label className="mb-1 font-semibold text-[#9500FF]">
+                    Username
+                  </label>
                   <input
                     type="text"
                     value={userData.username || ""}
                     onChange={(e) =>
                       setUserData({ ...userData, username: e.target.value })
                     }
-                    className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                    className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF] bg-gray-100 "
                     required
+                    disabled
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold">Email</label>
+                  <label className="mb-1 font-semibold text-[#9500FF]">
+                    Email
+                  </label>
                   <input
                     type="email"
                     value={userData.email || ""}
@@ -152,7 +161,9 @@ const OperatorProfile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold">Full Name</label>
+                  <label className="mb-1 font-semibold text-[#9500FF]">
+                    Full Name
+                  </label>
                   <input
                     type="text"
                     value={userData.fullname || ""}
@@ -163,7 +174,9 @@ const OperatorProfile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold">Origin</label>
+                  <label className="mb-1 font-semibold text-[#9500FF]">
+                    Asal
+                  </label>
                   <input
                     type="text"
                     value={userData.asal || ""}
@@ -174,7 +187,9 @@ const OperatorProfile = () => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold">Phone Number</label>
+                  <label className="mb-1 font-semibold text-[#9500FF]">
+                    No Telp
+                  </label>
                   <input
                     type="text"
                     value={userData.no_telp || ""}
@@ -186,7 +201,7 @@ const OperatorProfile = () => {
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md hover:bg-[#9500FF] transition duration-200"
+                  className="w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md  hover:bg-[#7a00cc] cursor-pointer transition duration-200"
                   disabled={loading}
                 >
                   {loading ? "Updating..." : "Update Profile"}
@@ -206,17 +221,19 @@ const OperatorProfile = () => {
               {photoPreview ? (
                 <img
                   src={photoPreview}
-                  alt="Profile"
-                  className="w-50 h-50 rounded-full object-cover mb-4"
+                  alt="Foto Profil"
+                  className="w-80 h-80 rounded-full object-cover mb-4 border-4 border-[#9500FF]"
                 />
               ) : (
-                <div className="w-50 h-50 rounded-full bg-gray-200 mb-4"></div>
+                <div className="w-40 h-40 rounded-full bg-gray-200 flex items-center justify-center mb-4">
+                  <span className="text-gray-500">Tidak ada foto</span>
+                </div>
               )}
               <input
                 type="file"
                 accept="image/*"
                 onChange={handlePhotoChange}
-                className="mb-4"
+                className=" text-[#9500FF] rounded-md cursor-pointer "
               />
             </div>
           </div>

@@ -1,4 +1,3 @@
-// src/moleculs/TableRU.jsx
 import React from "react";
 
 const TableRU = ({ headers, data, onApprove }) => {
@@ -6,42 +5,46 @@ const TableRU = ({ headers, data, onApprove }) => {
     <table className="min-w-full table-auto mt-4">
       <thead>
         <tr>
-          {headers.map((header, index) => (
-            <th key={index} className="border px-4 py-2 border-none">
+          {headers.map((header) => (
+            <th key={header.key} className={`${header.width} px-4 py-2`}>
               {header.label}
             </th>
           ))}
-          <th className="border px-4 py-2 border-none">Actions</th>
         </tr>
       </thead>
       <tbody>
         {data.length > 0 ? (
           data.map((item, index) => (
             <tr key={index}>
-              {headers.map((header, idx) => (
+              {headers.map((header) => (
                 <td
-                  key={idx}
+                  key={header.key}
                   className="border border-none px-2 py-1 text-center"
                 >
-                  {item[header.key]}
+                  {header.key === "no" ? (
+                    index + 1
+                  ) : header.key === "actions" ? (
+                    <button
+                      onClick={() => onApprove(item.id)}
+                      className={`px-4 py-2 rounded ${
+                        item.status === "selesai"
+                          ? "bg-[#590396]"
+                          : "bg-[#9500FF]"
+                      } text-white`}
+                      disabled={item.status === "selesai"}
+                    >
+                      {item.status === "selesai" ? "Selesai" : "Approve"}
+                    </button>
+                  ) : (
+                    item[header.key] || "-"
+                  )}
                 </td>
               ))}
-              <td className="border border-none px-2 py-1 text-center transition-colors">
-                <button
-                  onClick={() => onApprove(item.id)}
-                  className={`px-4 py-2 rounded ${
-                    item.status === "selesai" ? "bg-[#590396] " : "bg-[#9500FF]"
-                  } text-white`}
-                  disabled={item.status === "selesai"}
-                >
-                  {item.status === "selesai" ? "Selesai" : "Approve"}
-                </button>
-              </td>
             </tr>
           ))
         ) : (
           <tr>
-            <td colSpan={headers.length + 1} className="text-center py-4">
+            <td colSpan={headers.length} className="text-center py-4">
               Data tidak ditemukan
             </td>
           </tr>

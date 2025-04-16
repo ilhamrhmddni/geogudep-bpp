@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Swal from "sweetalert2"; // Import SweetAlert2
 import {
   createEvent,
   editEvent,
   fetchEventById,
 } from "../../../services/EventService";
 import OperatorTemplate from "../../templates/OperatorTemplate";
-import Swal from "sweetalert2"; // Import SweetAlert2
 
 const OperatorEventForm = ({ isEdit }) => {
   const [nama, setNama] = useState("");
@@ -218,7 +218,7 @@ const OperatorEventForm = ({ isEdit }) => {
                 type="submit"
                 className="w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md hover:bg-[#9500FF] transition duration-200"
               >
-                {isEdit ? "Update" : "Save"}
+                {isEdit ? "Ubah" : "Simpan"}
               </button>
             </form>
           </div>

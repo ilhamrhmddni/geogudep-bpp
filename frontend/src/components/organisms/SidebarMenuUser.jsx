@@ -11,6 +11,10 @@ const SidebarMenuUser = ({
 }) => {
   const navigate = useNavigate();
 
+  const handleLogin = () => {
+    navigate("/login"); // Arahkan ke halaman login
+  };
+
   return (
     <div
       className={`fixed top-0 left-0 h-full bg-[#9500FF] shadow-lg p-4 z-40 transition-transform duration-300 ${
@@ -55,6 +59,20 @@ const SidebarMenuUser = ({
           </li>
         ))}
       </ul>
+
+      {/* Tombol Login di Sidebar */}
+      <div
+        className="fixed bottom-0 left-0 w-full p-4 z-30 flex justify-center items-center transition-transform duration-300 mb-8"
+        style={{ transform: "translateX(0px)" }}
+      >
+        <button
+          onClick={handleLogin}
+          className="bg-[#9500FF] text-white px-8 py-2 font-bold transition-transform hover:bg-white hover:text-[#9500FF] cursor-pointer rounded-full flex gap-4"
+        >
+          Login Operator
+          <span className="material-icons">person</span>
+        </button>
+      </div>
 
       {/* Menampilkan ikon di kanan */}
       <div className="md:mt-48 lg:mt-54 xl:mt-88 flex-grow">{rightIcon}</div>

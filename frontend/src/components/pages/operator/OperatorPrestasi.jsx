@@ -47,16 +47,13 @@ const OperatorPrestasi = () => {
   }, [gudepId]);
 
   const headers = [
-    { key: "nama_event", label: "Nama Event" },
-    { key: "tingkat", label: "Tingkat" },
-    { key: "tahun", label: "Tahun" },
-    { key: "keterangan", label: "Keterangan" },
-    { key: "actions", label: "Aksi" },
+    { key: "no", label: "No", width: "w-1/12" },
+    { key: "nama_event", label: "Nama Event", width: "w-2/12" },
+    { key: "tingkat", label: "Tingkat", width: "w-1/12" },
+    { key: "tahun", label: "Tahun", width: "w-1/12" },
+    { key: "keterangan", label: "Keterangan", width: "w-5/12" },
+    { key: "actions", label: "Aksi", width: "w-1/12" },
   ];
-
-  const handleAddPrestasi = () => {
-    navigate("/operator/prestasi/add");
-  };
 
   const handleEditPrestasi = (id) => {
     navigate(`/operator/prestasi/edit/${id}`);
@@ -77,7 +74,8 @@ const OperatorPrestasi = () => {
     }
   };
 
-  const transformedData = data.map((item) => ({
+  const transformedData = data.map((item, index) => ({
+    no: index + 1,
     tingkat: item.eventes?.tingkat || "-",
     tahun: item.eventes?.tanggal_mulai
       ? new Date(item.eventes.tanggal_mulai).toLocaleDateString("id-ID", {

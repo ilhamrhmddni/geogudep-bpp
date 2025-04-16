@@ -1,59 +1,11 @@
-// URL dasar API
+import axios from "axios";
+
 const API_URL = "http://localhost:3000/";
 
-// Fungsi untuk mengedit data Kwarran
-export const editKwarran = async (id, item) => {
-  try {
-    const response = await fetch(`${API_URL}kwarran/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(item),
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to edit Kwarran");
-    }
-
-    const updatedItem = await response.json();
-    return updatedItem;
-  } catch (error) {
-    console.error("Error editing Kwarran:", error);
-    throw error;
-  }
-};
-
-// Fungsi untuk menghapus data Kwarran
-export const deleteKwarran = async (id) => {
-  try {
-    const response = await fetch(`${API_URL}kwarran/${id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to delete Kwarran");
-    }
-
-    const result = await response.json(); // Mendapatkan respon sukses dari server
-    return result;
-  } catch (error) {
-    console.error("Error deleting Kwarran:", error);
-    throw error;
-  }
-};
-
-// Fungsi untuk mengambil data Kwarran
 export const fetchKwarran = async () => {
   try {
-    const response = await fetch(`${API_URL}kwarran`);
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch Kwarran data");
-    }
-
-    const data = await response.json(); // Mengambil data dalam bentuk JSON
-    return data;
+    const response = await axios.get(`${API_URL}kwarran`);
+    return response.data;
   } catch (error) {
     console.error("Error fetching Kwarran:", error);
     throw error;
@@ -62,14 +14,8 @@ export const fetchKwarran = async () => {
 
 export const fetchKwarranId = async (id) => {
   try {
-    const response = await fetch(`${API_URL}kwarran/${id}`);
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch Kwarran data");
-    }
-
-    const data = await response.json();
-    return data; // Pastikan data yang dikembalikan sesuai dengan struktur yang diharapkan
+    const response = await axios.get(`${API_URL}kwarran/${id}`);
+    return response.data;
   } catch (error) {
     console.error("Error fetching Kwarran by ID:", error);
     throw error;
@@ -78,16 +24,40 @@ export const fetchKwarranId = async (id) => {
 
 export const createKwarran = async (data) => {
   try {
-    const response = await fetch(`${API_URL}kwarran`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-    return await response.json();
+    const response = await axios.post(`${API_URL}kwarran`, data);
+    return response.data;
   } catch (error) {
     console.error("Error creating Kwarran:", error);
+
+    if (error.response && error.response.data) {
+      console.error("Server error details:", error.response.data);
+      const errorMessage =
+        error.response.data.error ||
+        error.response.data.message ||
+        "Unknown server error";
+      throw new Error(errorMessage);
+    }
+
     throw error;
+  }
+};
+
+export const editKwarran = async (id, data) => {
+  try {
+    const response = await axios.put(`${API_URL}kwarran/${id}`, data);
+    return response.data;
+  } catch (error) {
+    console.error("Error editing Kwarran:", error);
+    throw new Error("Failed to edit Kwarran");
+  }
+};
+
+export const deleteKwarran = async (id) => {
+  try {
+    const response = await axios.delete(`${API_URL}kwarran/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting Kwarran:", error);
+    throw new Error("Failed to delete Kwarran");
   }
 };
