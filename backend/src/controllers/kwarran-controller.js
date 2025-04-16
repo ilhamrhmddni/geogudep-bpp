@@ -51,6 +51,7 @@ module.exports = {
     }
 
     try {
+      console.log("Creating Kwarran with data:", req.body);
       const newKwarran = await Kwarran.create({
         kode,
         nama,
@@ -64,13 +65,13 @@ module.exports = {
         data: newKwarran,
       });
     } catch (error) {
+      console.error("Detailed error:", error);
       return res.status(500).json({
         message: "Terjadi kesalahan server",
         error: error.message,
       });
     }
   },
-
   // Hapus data Kwarran berdasarkan ID
   deleteKwarran: async (req, res) => {
     const { id } = req.params;

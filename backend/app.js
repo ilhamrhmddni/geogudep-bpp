@@ -16,7 +16,7 @@ app.use(express.json()); // Parsing JSON request body
 app.use(express.urlencoded({ extended: true })); // Parsing URL-encoded data
 app.use(morgan("dev")); // Logging request
 
-// Konfigurasi Multer untuk upload file ke memory
+// Konfigurasi multer untuk upload file
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
@@ -26,7 +26,7 @@ const uploadToImgur = async (req, res, next) => {
     try {
       const imgurUpload = await axios({
         method: "post",
-        url: "https://api.imgur.com/3/image",
+        url: "https://api.imgur.com/oauth2/authorize",
         headers: {
           Authorization: `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
         },

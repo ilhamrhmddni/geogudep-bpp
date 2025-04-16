@@ -11,7 +11,7 @@ const Kwarran = sequelize.define(
       primaryKey: true,
     },
     kode: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING,
       allowNull: false,
       unique: true,
     },
