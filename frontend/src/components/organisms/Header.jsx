@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import decodeToken from "./../../utils/jwt";
+import { decodeToken } from "../../utils/jwt";
 
 const Header = () => {
   const navigate = useNavigate();

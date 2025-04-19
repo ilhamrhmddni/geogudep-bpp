@@ -1,5 +1,6 @@
 const axios = require("axios");
 const { User, Gudep } = require("../models");
+const { StatusCodes } = require("http-status-codes"); // Import status codes
 
 module.exports = {
   // Ambil semua user
@@ -8,24 +9,27 @@ module.exports = {
       const allUser = await User.findAll({
         include: [
           {
-            model: Gudep, // Ganti dengan model yang sesuai jika berbeda
-            attributes: ["id", "no_gudep"], // Hanya ambil field yang diperlukan
+            model: Gudep,
+            attributes: ["id", "no_gudep"],
             as: "gudepes",
           },
         ],
       });
 
-      return res.status(200).json({
-        message: "Data users berhasil didapatkan",
+      res.status(StatusCodes.OK).json({
+        // Use StatusCodes.OK
+        message: "Data semua user berhasil didapatkan",
         data: allUser,
       });
     } catch (error) {
-      return res.status(500).json({
+      res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        // Use StatusCodes.INTERNAL_SERVER_ERROR
         message: "Terjadi kesalahan server",
         error: error.message,
       });
     }
   },
+
   // Ambil user berdasarkan ID
   getUser: async (req, res) => {
     const { id } = req.params;
@@ -35,149 +39,138 @@ module.exports = {
       });
 
       if (!user) {
-        return res.status(404).json({
-          message: "User tidak ditemukan",
-        });
+        return res
+          .status(StatusCodes.NOT_FOUND)
+          .json({ message: "User tidak ditemukan" }); // Use StatusCodes.NOT_FOUND
       }
 
-      let fullPhotoPath = user.photo_path;
-
-      // Pastikan `photo_path` tidak ditambahkan API_URL jika sudah merupakan URL
-      if (fullPhotoPath && !fullPhotoPath.startsWith("http")) {
-        fullPhotoPath = `${req.protocol}://${req.get("host")}/${fullPhotoPath}`;
+      const dataUser = user.toJSON();
+      if (dataUser.photo_path && !dataUser.photo_path.startsWith("http")) {
+        dataUser.photo_path = `${req.protocol}://${req.get("host")}/${
+          dataUser.photo_path
+        }`;
       }
 
-      return res.status(200).json({
+      res.status(StatusCodes.OK).json({
+        // Use StatusCodes.OK
         message: "Data user berhasil didapatkan",
-        data: { ...user.toJSON(), photo_path: fullPhotoPath },
+        data: dataUser,
       });
     } catch (error) {
-      return res.status(500).json({
+      res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        // Use StatusCodes.INTERNAL_SERVER_ERROR
         message: "Terjadi kesalahan server",
         error: error.message,
       });
     }
   },
 
-  // controllers/UserController.js (addUser function - Option 3)
+  // Tambah user baru
   addUser: async (req, res) => {
     const { username, password } = req.body;
     try {
       const existingUser = await User.findOne({ where: { username } });
-
       if (existingUser) {
-        return res.status(400).json({ message: "Username sudah terdaftar" });
+        return res
+          .status(StatusCodes.BAD_REQUEST)
+          .json({ message: "Username sudah terdaftar" }); // Use StatusCodes.BAD_REQUEST
       }
 
-      const newUser = await User.create({
-        username,
-        password,
-      });
-
-      return res.status(201).json({
+      const newUser = await User.create({ username, password });
+      res.status(StatusCodes.CREATED).json({
+        // Use StatusCodes.CREATED
         message: "User berhasil ditambahkan",
         data: newUser,
       });
     } catch (error) {
-      return res.status(500).json({
+      res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        // Use StatusCodes.INTERNAL_SERVER_ERROR
         message: "Terjadi kesalahan server",
         error: error.message,
       });
     }
   },
+
   // Hapus user
   deleteUser: async (req, res) => {
     const { id } = req.params;
     try {
       const user = await User.findByPk(id);
       if (!user) {
-        return res.status(404).json({ message: "User tidak ditemukan" });
+        return res
+          .status(StatusCodes.NOT_FOUND)
+          .json({ message: "User tidak ditemukan" }); // Use StatusCodes.NOT_FOUND
       }
 
       await user.destroy();
-      return res.status(200).json({ message: "User berhasil dihapus" });
+      res.status(StatusCodes.OK).json({ message: "User berhasil dihapus" }); // Use StatusCodes.OK
     } catch (error) {
-      return res.status(500).json({
+      res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        // Use StatusCodes.INTERNAL_SERVER_ERROR
         message: "Terjadi kesalahan server",
         error: error.message,
       });
     }
   },
 
+  // Perbarui user
   updateUser: async (req, res) => {
+    const { id } = req.params;
     try {
-      const { id } = req.params;
       const user = await User.findByPk(id);
-
       if (!user) {
-        return res.status(404).json({ message: "User  tidak ditemukan" });
+        return res
+          .status(StatusCodes.NOT_FOUND)
+          .json({ message: "User tidak ditemukan" }); // Use StatusCodes.NOT_FOUND
       }
 
-      // Ambil data lama
-      const currentData = user.get(); // Mengambil semua data pengguna saat ini
+      const {
+        username = user.username,
+        email = user.email,
+        fullname = user.fullname,
+        asal = user.asal,
+        no_telp = user.no_telp,
+        password,
+      } = req.body;
 
-      // Buat objek untuk menyimpan data yang akan diperbarui
-      const updateData = {
-        username: req.body.username || currentData.username,
-        email: req.body.email || currentData.email,
-        fullname: req.body.fullname || currentData.fullname,
-        asal: req.body.asal || currentData.asal,
-        no_telp: req.body.no_telp || currentData.no_telp,
-      };
+      const updateData = { username, email, fullname, asal, no_telp };
+      if (password) updateData.password = password;
 
-      // Perbarui password jika ada
-      if (req.body.password) {
-        updateData.password = req.body.password; // Simpan password tanpa hashing
-      }
-
-      // Jika ada file foto yang diupload
-      if (req.file) {
+      if (req.file && req.file.buffer) {
         try {
-          // Pastikan buffer tersedia
-          if (!req.file.buffer) {
-            throw new Error("File buffer tidak tersedia");
-          }
+          const imgurRes = await axios.post(
+            "https://api.imgur.com/3/image",
+            req.file.buffer,
+            {
+              headers: {
+                Authorization: `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
+                "Content-Type": "application/octet-stream",
+              },
+            }
+          );
 
-          // Upload ke Imgur
-          const imgurResponse = await axios({
-            method: "post",
-            url: "https://api.imgur.com/3/image",
-            headers: {
-              Authorization: `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
-              "Content-Type": "application/octet-stream",
-            },
-            data: req.file.buffer,
-          });
+          const imgurLink = imgurRes?.data?.data?.link;
+          if (!imgurLink) throw new Error("Link dari Imgur tidak ditemukan");
 
-          console.log("Imgur Response:", imgurResponse.data);
-
-          if (
-            imgurResponse.data &&
-            imgurResponse.data.data &&
-            imgurResponse.data.data.link
-          ) {
-            updateData.photo_path = imgurResponse.data.data.link;
-          } else {
-            throw new Error("Format respons Imgur tidak sesuai");
-          }
-        } catch (error) {
-          console.error("Error uploading to Imgur:", error);
-          return res.status(500).json({
+          updateData.photo_path = imgurLink;
+        } catch (uploadErr) {
+          return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            // Use StatusCodes.INTERNAL_SERVER_ERROR
             message: "Gagal mengupload foto",
-            error: error.message,
+            error: uploadErr.message,
           });
         }
       }
 
-      // Update data user di database
       await user.update(updateData);
-      return res.status(200).json({
-        message: "User  berhasil diperbarui",
+      res.status(StatusCodes.OK).json({
+        // Use StatusCodes.OK
+        message: "User berhasil diperbarui",
         data: user,
       });
     } catch (error) {
-      console.error("Server error:", error);
-      return res.status(500).json({
+      res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        // Use StatusCodes.INTERNAL_SERVER_ERROR
         message: "Terjadi kesalahan server",
         error: error.message,
       });

@@ -1,12 +1,19 @@
-// src/templates/AdminTemplate.js
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import Header from "../organisms/Header";
 import SidebarMenu from "../organisms/SidebarMenu";
 
-// Ambil langsung dari localStorage saat inisialisasi state
 const AdminTemplate = ({ children }) => {
-  const initialOpen = localStorage.getItem("sidebarOpen") === "true";
-  const [isOpen, setIsOpen] = useState(initialOpen);
+  const [isOpen, setIsOpen] = useState(() => {
+    const storedOpen = localStorage.getItem("sidebarOpen");
+    return storedOpen === "true";
+  });
+  const location = useLocation();
+  const [currentPath, setCurrentPath] = useState(location.pathname);
+
+  useEffect(() => {
+    setCurrentPath(location.pathname);
+  }, [location.pathname]);
 
   const toggleMenu = () => {
     const newValue = !isOpen;
@@ -24,8 +31,6 @@ const AdminTemplate = ({ children }) => {
     { name: "Peserta Didik", icon: "people", path: "/admin/pesertadidik" },
     { name: "Laporan Gudep", icon: "assignment", path: "/admin/laporangudep" },
   ];
-
-  const currentPath = window.location.pathname;
 
   return (
     <div className="h-screen flex">

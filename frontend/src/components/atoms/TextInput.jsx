@@ -14,7 +14,7 @@ const InputDefault = ({
       placeholder={placeholder}
       value={value}
       onChange={onChange}
-      className="border rounded-full border-gray-300 px-8 py-2 w-full bg-white "
+      className="border rounded-full border-gray-300 px-8 py-3 w-full bg-white font-semibold"
     />
   );
 };

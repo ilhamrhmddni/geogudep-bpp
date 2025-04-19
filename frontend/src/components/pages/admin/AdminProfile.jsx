@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { editUser, fetchProfile } from "../../../services/OperatorService";
-import decodeToken from "../../../utils/jwt";
+import { decodeToken } from "../../../utils/jwt";
 import AdminTemplate from "../../templates/AdminTemplate";
 
 const AdminProfile = () => {
@@ -20,42 +20,34 @@ const AdminProfile = () => {
   const [photoPreview, setPhotoPreview] = useState(null);
   const navigate = useNavigate();
 
-  const formData = new FormData();
-  formData.append("username", userData.username);
-  formData.append("email", userData.email);
-  formData.append("fullname", userData.fullname);
-  formData.append("asal", userData.asal);
-  formData.append("no_telp", userData.no_telp);
-
-  // Pastikan nama field untuk foto sesuai dengan yang diharapkan backend
-  if (photo) {
-    formData.append("photo_path", photo); // Perhatikan: gunakan "photo" bukan "photo_path"
-  }
   useEffect(() => {
-    const decoded = decodeToken();
-    if (!decoded) {
-      setError("Token invalid or not found");
-      return;
-    }
+    const fetchProfileData = async () => {
+      setLoading(true);
+      setError(null);
+      const decoded = decodeToken();
+      if (!decoded) {
+        setError("Token tidak valid atau tidak ditemukan");
+        setLoading(false);
+        return;
+      }
+      const userId = decoded.user_id;
+      try {
+        const data = await fetchProfile(userId);
+        setUserData(data);
+        setPhotoPreview(data.photo_path || null);
+      } catch (err) {
+        setError("Gagal mengambil data profil: " + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const userId = decoded.user_id;
-    fetchUserData(userId);
+    fetchProfileData();
   }, []);
 
-  const fetchUserData = async (userId) => {
-    try {
-      const data = await fetchProfile(userId);
-      setUserData(data);
-      setPhotoPreview(data.photo_path || null);
-    } catch (error) {
-      setError(error.message);
-    }
-  };
-
-  const handlePhotoChange = (e) => {
+  const handlePhotoChange = useCallback((e) => {
     const file = e.target.files[0];
     setPhoto(file);
-
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -65,68 +57,78 @@ const AdminProfile = () => {
     } else {
       setPhotoPreview(null);
     }
-  };
+  }, []);
 
-  const handleUserUpdate = async (e) => {
-    e.preventDefault();
+  const handleInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setUserData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  }, []);
 
-    // Di dalam fungsi handleUserUpdate sebelum mengirim request
-    console.log("FormData contents:");
-    for (let pair of formData.entries()) {
-      console.log(pair[0] + ": " + pair[1]);
-    }
+  const handleUserUpdate = useCallback(
+    async (e) => {
+      e.preventDefault();
 
-    Swal.fire({
-      title: "Ubah Profil",
-      text: "Apakah Anda yakin ingin memperbarui profil?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Ya, lanjutkan!",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        setLoading(true);
-        setError(null);
+      Swal.fire({
+        title: "Ubah Profil",
+        text: "Apakah Anda yakin ingin memperbarui profil?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Ya, lanjutkan!",
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          setLoading(true);
+          setError(null);
 
-        try {
-          const formData = new FormData();
-          formData.append("username", userData.username);
-          formData.append("email", userData.email);
-          formData.append("fullname", userData.fullname);
-          formData.append("asal", userData.asal);
-          formData.append("no_telp", userData.no_telp);
+          try {
+            const formData = new FormData();
+            formData.append("username", userData.username);
+            formData.append("email", userData.email);
+            formData.append("fullname", userData.fullname);
+            formData.append("asal", userData.asal);
+            formData.append("no_telp", userData.no_telp);
+            if (photo) {
+              formData.append("photo_path", photo);
+            }
 
-          // Only append the file to formData if a new photo was selected
-          if (photo) {
-            formData.append("photo_path", photo);
+            const decoded = decodeToken();
+            if (!decoded) {
+              throw new Error("Token tidak valid atau tidak ditemukan");
+            }
+            const userId = decoded.user_id;
+            const response = await editUser(userId, formData);
+
+            console.log("Respons dari editUser:", response); // PERHATIKAN LOG INI
+
+            if (response && response.message === "User berhasil diperbarui") {
+              await fetchProfile(userId); // Refresh data
+              Swal.fire(
+                "Berhasil!",
+                "Profil Anda telah diperbarui.",
+                "success"
+              );
+            } else {
+              const errorMessage =
+                response?.message ||
+                "Terjadi kesalahan saat memperbarui profil.";
+              Swal.fire("Gagal!", errorMessage, "error");
+              setError(errorMessage);
+            }
+          } catch (err) {
+            Swal.fire("Gagal!", err.message, "error");
+            setError(err.message);
+          } finally {
+            setLoading(false);
           }
-
-          const decoded = decodeToken();
-          if (!decoded) {
-            throw new Error("Token invalid or not found");
-          }
-
-          // Use the editUser function from your service
-          const response = await editUser(decoded.user_id, formData);
-
-          if (response && response.message === "User berhasil diperbarui") {
-            // Refresh data pengguna setelah update berhasil
-            await fetchUserData(decoded.user_id);
-
-            Swal.fire("Berhasil!", "Profil Anda telah diperbarui.", "success");
-          } else {
-            throw new Error("Terjadi kesalahan saat memperbarui profil");
-          }
-        } catch (error) {
-          setError(error.message);
-          Swal.fire("Gagal!", error.message, "error");
-        } finally {
-          setLoading(false);
         }
-      }
-    });
-  };
+      });
+    },
+    [userData, photo, navigate]
+  );
 
   return (
     <AdminTemplate>
@@ -151,59 +153,69 @@ const AdminProfile = () => {
             <div className="w-1/2 pr-4">
               <form onSubmit={handleUserUpdate} className="space-y-4">
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold">Username</label>
+                  <label htmlFor="username" className="mb-1 font-semibold">
+                    Username
+                  </label>
                   <input
                     type="text"
+                    id="username"
+                    name="username"
                     value={userData.username || ""}
-                    onChange={(e) =>
-                      setUserData({ ...userData, username: e.target.value })
-                    }
+                    onChange={handleInputChange}
                     className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF] bg-gray-100 "
                     required
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold">Email</label>
+                  <label htmlFor="email" className="mb-1 font-semibold">
+                    Email
+                  </label>
                   <input
                     type="email"
+                    id="email"
+                    name="email"
                     value={userData.email || ""}
-                    onChange={(e) =>
-                      setUserData({ ...userData, email: e.target.value })
-                    }
+                    onChange={handleInputChange}
                     className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                     required
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold">Full Name</label>
+                  <label htmlFor="fullname" className="mb-1 font-semibold">
+                    Full Name
+                  </label>
                   <input
                     type="text"
+                    id="fullname"
+                    name="fullname"
                     value={userData.fullname || ""}
-                    onChange={(e) =>
-                      setUserData({ ...userData, fullname: e.target.value })
-                    }
+                    onChange={handleInputChange}
                     className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold">Asal</label>
+                  <label htmlFor="asal" className="mb-1 font-semibold">
+                    Asal
+                  </label>
                   <input
                     type="text"
+                    id="asal"
+                    name="asal"
                     value={userData.asal || ""}
-                    onChange={(e) =>
-                      setUserData({ ...userData, asal: e.target.value })
-                    }
+                    onChange={handleInputChange}
                     className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold">No Telp</label>
+                  <label htmlFor="no_telp" className="mb-1 font-semibold">
+                    No Telp
+                  </label>
                   <input
                     type="text"
+                    id="no_telp"
+                    name="no_telp"
                     value={userData.no_telp || ""}
-                    onChange={(e) =>
-                      setUserData({ ...userData, no_telp: e.target.value })
-                    }
+                    onChange={handleInputChange}
                     className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                   />
                 </div>
@@ -230,7 +242,9 @@ const AdminProfile = () => {
                   className="w-50 h-50 rounded-full object-cover mb-4"
                 />
               ) : (
-                <div className="w-50 h-50 rounded-full bg-gray-200 mb-4"></div>
+                <div className="w-50 h-50 rounded-full bg-gray-200 mb-4 flex items-center justify-center">
+                  <span className="text-gray-500">No Photo</span>
+                </div>
               )}
               <input
                 type="file"

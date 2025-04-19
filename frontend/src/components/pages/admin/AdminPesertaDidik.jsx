@@ -1,8 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchGugusdepan } from "../../../services/GugusdepanService";
 import { fetchKwarran } from "../../../services/KwarranService";
 import { fetchPesertadidik } from "../../../services/PesertadidikService";
-import SearchInput from "../../atoms/SearchInput";
+import DetailCell from "../../atoms/DetailCell";
+import ErrorMessage from "../../atoms/ErrorMessage";
+import FormatDate from "../../atoms/FormatDate";
+import LoadingSpinner from "../../atoms/LoadingSpinner";
+import NoDataMessage from "../../atoms/NoDataMessage";
+import FilterHeader from "../../moleculs/FilterHeader"; // Import FilterHeader
 import TableR from "../../moleculs/TableR";
 import AdminTemplate from "../../templates/AdminTemplate";
 
@@ -16,131 +21,155 @@ const AdminPesertaDidik = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [pesertaResult, kwarranResult, gudepResult] = await Promise.all([
-          fetchPesertadidik(),
-          fetchKwarran(),
-          fetchGugusdepan(),
-        ]);
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [pesertaResult, kwarranResult, gudepResult] = await Promise.all([
+        fetchPesertadidik(),
+        fetchKwarran(),
+        fetchGugusdepan(),
+      ]);
 
-        setData(Array.isArray(pesertaResult.data) ? pesertaResult.data : []);
-        setKwarranList(kwarranResult.data || []);
-        setGudepList(gudepResult.data || []);
-        setError(null);
-      } catch (error) {
-        setError("Error fetching data.");
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+      setData(Array.isArray(pesertaResult.data) ? pesertaResult.data : []);
+      setKwarranList(kwarranResult.data || []);
+      setGudepList(gudepResult.data || []);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError("Gagal mengambil data.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const headers = [
-    { key: "no_gudep", label: "No. Gudep" },
-    { key: "tingkatan", label: "Tingkatan" },
-    { key: "nama", label: "Nama Peserta Didik" },
-    { key: "gender", label: "Gender" },
-    { key: "ttl", label: "Tempat, Tanggal Lahir" },
-    { key: "detailtingkatan", label: "Detail Tingkatan" },
-  ];
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  const enrichedData = data.map((item) => {
-    const matchedGudep = gudepList.find((gudep) => gudep.id === item.gudep_id);
-    return {
-      ...item,
-      no_gudep: matchedGudep ? matchedGudep.no_gudep : "-",
-      tingkatan: matchedGudep ? matchedGudep.tingkatan : "-",
-    };
-  });
-
-  const uniqueGudep = Array.from(
-    new Set(enrichedData.map((item) => item.no_gudep))
+  const handleSearchChange = useCallback(
+    (e) => setSearchQuery(e.target.value),
+    []
+  );
+  const handleGudepChange = useCallback((value) => setSelectedGudep(value), []);
+  const handleTingkatanChange = useCallback(
+    (value) => setSelectedTingkatan(value),
+    []
   );
 
-  const tingkatanOptions = [
-    "Siaga",
-    "Penggalang",
-    "Penegak/Pandega",
-    "Pandega",
-  ];
+  const enrichedData = useMemo(() => {
+    return data.map((item) => {
+      const matchedGudep = gudepList.find(
+        (gudep) => gudep.id === item.gudep_id
+      );
+      return {
+        ...item,
+        no_gudep: matchedGudep?.no_gudep ?? "-",
+        tingkatan: matchedGudep?.tingkatan ?? "-",
+        ttlFormatted: FormatDate(item.ttl),
+      };
+    });
+  }, [data, gudepList]);
 
-  const filteredData = enrichedData.filter((item) => {
-    const matchesSearch =
-      item.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.detailtingkatan.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredData = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return enrichedData.filter((item) => {
+      const matchesSearch =
+        item.nama.toLowerCase().includes(query) ||
+        item.detailtingkatan?.toLowerCase().includes(query) ||
+        item.no_gudep?.toLowerCase().includes(query);
 
-    const matchesGudep = selectedGudep ? item.no_gudep === selectedGudep : true;
-    const matchesTingkatan = selectedTingkatan
-      ? item.tingkatan === selectedTingkatan
-      : true;
+      const matchesGudep =
+        selectedGudep === "" || item.no_gudep === selectedGudep;
+      const matchesTingkatan =
+        selectedTingkatan === "" || item.tingkatan === selectedTingkatan;
 
-    return matchesSearch && matchesGudep && matchesTingkatan;
-  });
+      return matchesSearch && matchesGudep && matchesTingkatan;
+    });
+  }, [enrichedData, searchQuery, selectedGudep, selectedTingkatan]);
+
+  const transformedData = useMemo(() => {
+    return filteredData.map((item, index) => ({
+      no: index + 1,
+      no_gudep: item.no_gudep,
+      tingkatan: item.tingkatan,
+      nama: item.nama,
+      gender: item.gender,
+      ttl: (
+        <DetailCell
+          title="Lihat"
+          details={[{ label: "TTL", value: item.ttlFormatted }]}
+        />
+      ),
+      detailtingkatan: item.detailtingkatan,
+    }));
+  }, [filteredData]);
+
+  const gudepOptions = useMemo(() => {
+    return [...new Set(enrichedData.map((item) => item.no_gudep))]
+      .filter(Boolean)
+      .map((gudep) => ({ id: gudep, nama: gudep }));
+  }, [enrichedData]);
+
+  const tingkatanOptions = useMemo(
+    () => [
+      { id: "Siaga", nama: "Siaga" },
+      { id: "Penggalang", nama: "Penggalang" },
+      { id: "Penegak/Pandega", nama: "Penegak/Pandega" },
+      { id: "Pandega", nama: "Pandega" },
+    ],
+    []
+  );
+
+  const headers = useMemo(
+    () => [
+      { key: "no", label: "No", width: "w-1/20" },
+      { key: "no_gudep", label: "No. Gudep", width: "w-1/20" },
+      { key: "tingkatan", label: "Tingkatan", width: "w-1/20" },
+      { key: "nama", label: "Nama Peserta Didik", width: "w-3/20" },
+      { key: "gender", label: "Gender", width: "w-1/20" },
+      { key: "ttl", label: "Tanggal Lahir", width: "w-1/20" },
+      { key: "detailtingkatan", label: "Detail Tingkatan", width: "w-1/20" },
+    ],
+    []
+  );
 
   return (
     <AdminTemplate>
       <div className="ml-18 rounded-xl shadow-xl">
         <div className="p-4">
-          <div className="flex bg-[#9500FF] rounded-2xl mx-2">
-            <span
-              className="items-center text-2xl font-bold px-12 m-auto flex justify-center text-white"
-              style={{ whiteSpace: "nowrap" }}
-            >
-              Data Peserta Didik
-            </span>
-            <SearchInput
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <select
-              value={selectedGudep}
-              onChange={(e) => setSelectedGudep(e.target.value)}
-              className="m-2 p-2 border-2 border-white rounded-md text-white font-bold cursor-pointer"
-            >
-              <option value="" className="text-[#9500FF] font-bold">
-                No. Gudep
-              </option>
-              {uniqueGudep.map((gudep, index) => (
-                <option
-                  key={index}
-                  value={gudep}
-                  className="text-[#9500FF] font-bold"
-                >
-                  {gudep}
-                </option>
-              ))}
-            </select>
-            <select
-              value={selectedTingkatan}
-              onChange={(e) => setSelectedTingkatan(e.target.value)}
-              className="m-2 p-2 border-2 border-white rounded-md text-white font-bold cursor-pointer"
-            >
-              <option value="" className="text-[#9500FF] font-bold">
-                Tingkatan
-              </option>
-              {tingkatanOptions.map((tingkatan, index) => (
-                <option
-                  key={index}
-                  value={tingkatan}
-                  className="text-[#9500FF] font-bold"
-                >
-                  {tingkatan}
-                </option>
-              ))}
-            </select>
+          <FilterHeader
+            title="Data Peserta Didik"
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
+            dropdowns={[
+              {
+                name: "gudep",
+                options: gudepOptions,
+                selected: selectedGudep,
+                onChange: handleGudepChange,
+                placeholder: "No. Gudep",
+              },
+              {
+                name: "tingkatan",
+                options: tingkatanOptions,
+                selected: selectedTingkatan,
+                onChange: handleTingkatanChange,
+                placeholder: "Tingkatan",
+              },
+            ]}
+          />
+
+          <div className="mt-4">
+            {loading ? (
+              <LoadingSpinner />
+            ) : error ? (
+              <ErrorMessage message={error} />
+            ) : transformedData.length === 0 ? (
+              <NoDataMessage message="Data tidak ditemukan" />
+            ) : (
+              <TableR headers={headers} data={transformedData} />
+            )}
           </div>
-          {loading && <p className="text-center mt-4">Loading data...</p>}
-          {error && <p className="text-center mt-4 text-red-500">{error}</p>}
-          {filteredData.length === 0 && !loading ? (
-            <p className="text-center mt-4">Data tidak ditemukan</p>
-          ) : (
-            <TableR headers={headers} data={filteredData} />
-          )}
         </div>
       </div>
     </AdminTemplate>

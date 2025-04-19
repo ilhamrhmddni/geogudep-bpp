@@ -8,6 +8,7 @@ import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import { fetchGeografis } from "../../../services/GeografisService";
 import { fetchGugusdepan } from "../../../services/GugusdepanService";
 import { fetchKwarran } from "../../../services/KwarranService";
+import HeaderUser from "../../organisms/HeaderUser";
 import UserTemplate from "../../templates/UserTemplate";
 
 // Fix for marker icon not displaying
@@ -145,6 +146,7 @@ const UserGugusdepan = () => {
 
   return (
     <UserTemplate>
+      <HeaderUser />
       <div className={`ml-18 rounded-xl shadow-xl ${isFullScreen ? "" : ""}`}>
         <div className="p-4">
           <MapContainer

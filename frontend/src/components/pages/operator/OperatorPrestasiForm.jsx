@@ -7,7 +7,7 @@ import {
   editEventGudep,
   fetchEventGudepById,
 } from "../../../services/PrestasiService";
-import decodeToken from "../../../utils/jwt";
+import { decodeToken } from "../../../utils/jwt";
 import AddButton from "../../atoms/AddButton";
 import OperatorTemplate from "../../templates/OperatorTemplate";
 

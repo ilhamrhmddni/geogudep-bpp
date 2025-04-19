@@ -10,7 +10,7 @@ import {
   editPesertadidik,
   fetchPesertadidikById,
 } from "../../../services/PesertadidikService";
-import decodeToken from "../../../utils/jwt";
+import { decodeToken } from "../../../utils/jwt";
 import OperatorTemplate from "../../templates/OperatorTemplate";
 
 const tokenData = decodeToken();

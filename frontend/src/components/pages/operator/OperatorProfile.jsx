@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { editUser, fetchProfile } from "../../../services/OperatorService";
-import decodeToken from "../../../utils/jwt";
+import { decodeToken } from "../../../utils/jwt";
+import Label from "../../atoms/FormLabel";
+import Input from "../../atoms/TextInput";
 import OperatorTemplate from "../../templates/OperatorTemplate";
 
 const OperatorProfile = () => {
@@ -21,93 +23,111 @@ const OperatorProfile = () => {
   const [photoPreview, setPhotoPreview] = useState(null);
   const navigate = useNavigate();
 
+  // Gunakan useMemo agar decodeToken tidak menyebabkan render berulang
+  const decodedToken = useMemo(() => decodeToken(), []);
+  const userId = decodedToken?.user_id;
+
+  const fetchUserData = useCallback(async (id) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchProfile(id);
+      setUserData(data);
+      setPhotoPreview(data.photo_path || null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const decoded = decodeToken();
-    if (!decoded) {
+    console.log("✅ useEffect berjalan sekali di awal");
+
+    if (!userId) {
       setError("Token invalid or not found");
       return;
     }
 
-    const userId = decoded.user_id;
     fetchUserData(userId);
+  }, [userId, fetchUserData]);
+
+  const handleInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setUserData((prevUserData) => ({
+      ...prevUserData,
+      [name]: value,
+    }));
   }, []);
 
-  const fetchUserData = async (userId) => {
-    try {
-      const data = await fetchProfile(userId);
-      setUserData(data);
-      setPhotoPreview(data.photo_path || null); // Mengatur preview foto dengan path yang benar
-    } catch (error) {
-      setError(error.message);
-    }
-  };
+  const handlePhotoChange = useCallback(
+    (e) => {
+      const file = e.target.files[0];
+      setPhoto(file);
 
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    setPhoto(file);
-
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setPhotoPreview(null);
-    }
-  };
-
-  const handleUserUpdate = async (e) => {
-    e.preventDefault();
-
-    Swal.fire({
-      title: "Ubah Profil",
-      text: "Apakah Anda yakin ingin memperbarui profil?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Ya, lanjutkan!",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        setLoading(true);
-        setError(null);
-        setSuccessMessage("");
-
-        try {
-          const decoded = decodeToken();
-          if (!decoded) {
-            setError("Token invalid or not found");
-            return;
-          }
-
-          const userId = decoded.user_id;
-          const formData = new FormData();
-          formData.append("username", userData.username);
-          formData.append("email", userData.email);
-          formData.append("fullname", userData.fullname);
-          formData.append("asal", userData.asal);
-          formData.append("no_telp", userData.no_telp);
-          if (photo) {
-            formData.append("photo_path", photo); // Foto yang diupload
-          }
-
-          const updatedUser = await editUser(userId, formData);
-
-          // Ambil data pengguna lagi untuk memastikan semua informasi terbaru ditampilkan
-          await fetchUserData(userId); // Memanggil fungsi untuk mengambil data pengguna
-
-          setSuccessMessage("Profil berhasil diperbarui!");
-          Swal.fire("Berhasil!", "Profil Anda telah diperbarui.", "success");
-        } catch (error) {
-          setError(error.message);
-          Swal.fire("Gagal!", error.message, "error");
-        } finally {
-          setLoading(false);
-        }
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPhotoPreview(reader.result);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setPhotoPreview(userData.photo_path || null);
+        setPhoto(null);
       }
-    });
-  };
+    },
+    [userData.photo_path]
+  );
+
+  const handleUserUpdate = useCallback(
+    async (e) => {
+      e.preventDefault();
+
+      Swal.fire({
+        title: "Ubah Profil",
+        text: "Apakah Anda yakin ingin memperbarui profil?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Ya, lanjutkan!",
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          setLoading(true);
+          setError(null);
+          setSuccessMessage("");
+
+          try {
+            if (!userId) {
+              setError("Token invalid or not found");
+              return;
+            }
+
+            const formData = new FormData();
+            formData.append("username", userData.username);
+            formData.append("email", userData.email);
+            formData.append("fullname", userData.fullname);
+            formData.append("asal", userData.asal);
+            formData.append("no_telp", userData.no_telp);
+            if (photo) {
+              formData.append("photo_path", photo);
+            }
+
+            await editUser(userId, formData);
+            await fetchUserData(userId); // Refresh user data
+            setSuccessMessage("Profil berhasil diperbarui!");
+            Swal.fire("Berhasil!", "Profil Anda telah diperbarui.", "success");
+          } catch (err) {
+            setError(err.message);
+            Swal.fire("Gagal!", err.message, "error");
+          } finally {
+            setLoading(false);
+          }
+        }
+      });
+    },
+    [userId, userData, photo, fetchUserData]
+  );
 
   return (
     <OperatorTemplate>
@@ -120,7 +140,6 @@ const OperatorProfile = () => {
             <span className="material-icons text-white">arrow_back</span>
             Kembali
           </div>
-
           <h1 className="text-3xl font-bold flex-grow text-center mr-24 text-[#9500FF]">
             Edit Profil
           </h1>
@@ -132,76 +151,62 @@ const OperatorProfile = () => {
             <div className="w-1/2 pr-4">
               <form onSubmit={handleUserUpdate} className="space-y-4">
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold text-[#9500FF]">
-                    Username
-                  </label>
-                  <input
+                  <Label text="Username" htmlFor="username" />
+                  <Input
                     type="text"
+                    id="username"
+                    name="username"
                     value={userData.username || ""}
-                    onChange={(e) =>
-                      setUserData({ ...userData, username: e.target.value })
-                    }
-                    className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF] bg-gray-100 "
-                    required
+                    onChange={handleInputChange}
+                    className="bg-gray-100"
                     disabled
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="mb-1 font-semibold text-[#9500FF]">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={userData.email || ""}
-                    onChange={(e) =>
-                      setUserData({ ...userData, email: e.target.value })
-                    }
-                    className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                     required
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold text-[#9500FF]">
-                    Full Name
-                  </label>
-                  <input
+                  <Label text="Email" htmlFor="email" />
+                  <Input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={userData.email || ""}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <Label text="Full Name" htmlFor="fullname" />
+                  <Input
                     type="text"
+                    id="fullname"
+                    name="fullname"
                     value={userData.fullname || ""}
-                    onChange={(e) =>
-                      setUserData({ ...userData, fullname: e.target.value })
-                    }
-                    className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                    onChange={handleInputChange}
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold text-[#9500FF]">
-                    Asal
-                  </label>
-                  <input
+                  <Label text="Asal" htmlFor="asal" />
+                  <Input
                     type="text"
+                    id="asal"
+                    name="asal"
                     value={userData.asal || ""}
-                    onChange={(e) =>
-                      setUserData({ ...userData, asal: e.target.value })
-                    }
-                    className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                    onChange={handleInputChange}
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="mb-1 font-semibold text-[#9500FF]">
-                    No Telp
-                  </label>
-                  <input
+                  <Label text="No Telp" htmlFor="no_telp" />
+                  <Input
                     type="text"
+                    id="no_telp"
+                    name="no_telp"
                     value={userData.no_telp || ""}
-                    onChange={(e) =>
-                      setUserData({ ...userData, no_telp: e.target.value })
-                    }
-                    className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                    onChange={handleInputChange}
                   />
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md  hover:bg-[#7a00cc] cursor-pointer transition duration-200"
+                  className="w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md hover:bg-[#7a00cc] cursor-pointer transition duration-200"
                   disabled={loading}
                 >
                   {loading ? "Updating..." : "Update Profile"}
@@ -215,9 +220,7 @@ const OperatorProfile = () => {
 
             {/* Right Side: Profile Photo */}
             <div className="w-1/2 pl-4 flex flex-col items-center justify-center">
-              <label className="font-bold text-[#9500FF] text-2xl mb-4">
-                Profile Photo
-              </label>
+              <Label text="Profile Photo" />
               {photoPreview ? (
                 <img
                   src={photoPreview}
@@ -233,7 +236,7 @@ const OperatorProfile = () => {
                 type="file"
                 accept="image/*"
                 onChange={handlePhotoChange}
-                className=" text-[#9500FF] rounded-md cursor-pointer "
+                className="text-[#9500FF] rounded-md cursor-pointer"
               />
             </div>
           </div>

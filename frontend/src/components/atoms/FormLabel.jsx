@@ -1,14 +1,15 @@
 import React from "react";
 
-const FormLabel = ({ htmlFor, text }) => {
+const Label = ({ text, htmlFor, className, ...props }) => {
   return (
     <label
       htmlFor={htmlFor}
-      className="block text-md font-bold text-white text-center "
+      className={`mb-1 font-bold text-[#9500FF] ${className}`}
+      {...props}
     >
       {text}
     </label>
   );
 };
 
-export default FormLabel;
+export default Label;

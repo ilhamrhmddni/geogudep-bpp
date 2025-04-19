@@ -5,7 +5,7 @@ import {
   fetchGugusdepanId,
 } from "../../../services/GugusdepanService";
 import { fetchKwarran } from "../../../services/KwarranService";
-import decodeToken from "../../../utils/jwt";
+import { decodeToken } from "../../../utils/jwt";
 import OperatorTemplate from "../../templates/OperatorTemplate";
 
 const OperatorGugusdepan = () => {
@@ -17,6 +17,7 @@ const OperatorGugusdepan = () => {
   const [jumlahPutri, setJumlahPutri] = useState(0);
   const [noGudep, setNoGudep] = useState("");
   const [pangkalan, setPangkalan] = useState(""); // Pangkalan state
+  const [ambalan, setAmbalan] = useState(""); // Pangkalan state
   const [isEditable, setIsEditable] = useState(false);
 
   const tokenData = decodeToken();
@@ -34,6 +35,7 @@ const OperatorGugusdepan = () => {
         setJumlahPutri(result.data.jumlah_putri || 0);
         setNoGudep(result.data.no_gudep || "");
         setPangkalan(result.data.pangkalan || ""); // Initialize pangkalan
+        setAmbalan(result.data.ambalan || ""); // Initialize pangkalan
         setError(null);
       } catch (error) {
         setError("Error fetching data.");
@@ -80,6 +82,7 @@ const OperatorGugusdepan = () => {
             jumlah_putri: jumlahPutri,
             no_gudep: noGudep,
             pangkalan: pangkalan, // Include pangkalan in the submission
+            ambalan: ambalan, // Include pangkalan in the submission
           });
 
           Swal.fire("Sukses!", "Data Anda telah disimpan.", "success");
@@ -90,6 +93,7 @@ const OperatorGugusdepan = () => {
           setJumlahPutri(updatedResult.data.jumlah_putri || 0);
           setNoGudep(updatedResult.data.no_gudep || "");
           setPangkalan(updatedResult.data.pangkalan || ""); // Update pangkalan
+          setAmbalan(updatedResult.data.ambalan || ""); // Update pangkalan
           setIsEditable(false);
         } catch (error) {
           Swal.fire("Error!", "Gagal menyimpan data.", "error");
@@ -139,31 +143,6 @@ const OperatorGugusdepan = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
-                    Jumlah Putra:
-                  </label>
-                  <input
-                    type="number"
-                    value={jumlahPutra}
-                    readOnly
-                    className="rounded-xl p-3 w-full border border-gray-300 bg-gray-100"
-                  />
-                </div>
-                <div>
-                  <label className="text-[#9500FF] font-bold mb-2 block">
-                    Jumlah Putri:
-                  </label>
-                  <input
-                    type="number"
-                    value={jumlahPutri}
-                    readOnly
-                    className="rounded-xl p-3 w-full border border-gray-300 bg-gray-100"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[#9500FF] font-bold mb-2 block">
                     Kwarran:
                   </label>
                   <select
@@ -206,8 +185,8 @@ const OperatorGugusdepan = () => {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="md:col-span-2">
                   <label className="text-[#9500FF] font-bold mb-2 block">
                     No. Gudep:
                   </label>
@@ -220,6 +199,48 @@ const OperatorGugusdepan = () => {
                     }`}
                     placeholder="Masukkan No. Gudep"
                     readOnly={!isEditable}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[#9500FF] font-bold mb-2 block">
+                    Jumlah Putra:
+                  </label>
+                  <input
+                    type="number"
+                    value={jumlahPutra}
+                    readOnly
+                    className="rounded-xl p-3 w-full border border-gray-300 bg-gray-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[#9500FF] font-bold mb-2 block">
+                    Jumlah Putri:
+                  </label>
+                  <input
+                    type="number"
+                    value={jumlahPutri}
+                    readOnly
+                    className="rounded-xl p-3 w-full border border-gray-300 bg-gray-100"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[#9500FF] font-bold mb-2 block">
+                    Ambalan:
+                  </label>
+                  <input
+                    type="text"
+                    value={ambalan} // Controlled input for Pangkalan
+                    onChange={(e) => setAmbalan(e.target.value)}
+                    className={`rounded-xl p-3 w-full border border-gray-300 ${
+                      !isEditable ? "bg-gray-100" : ""
+                    }`}
+                    readOnly={!isEditable}
+                    placeholder="Masukkan Ambalan"
                   />
                 </div>
                 <div>

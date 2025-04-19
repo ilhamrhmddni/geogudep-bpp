@@ -6,10 +6,6 @@ import Input from "../atoms/TextInput";
 const FormInput = () => {
   const [name, setName] = useState("");
 
-  const handleSubmit = () => {
-    alert(`Hello, ${name}!`);
-  };
-
   return (
     <div className="p-4 border border-gray-200 rounded">
       <Label text="Nama" htmlFor="name" />

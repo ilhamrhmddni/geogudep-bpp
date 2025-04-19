@@ -16,7 +16,7 @@ import {
   editGeografis,
   fetchGeografisId,
 } from "../../../services/GeografisService";
-import decodeToken from "../../../utils/jwt";
+import { decodeToken } from "../../../utils/jwt";
 import OperatorTemplate from "../../templates/OperatorTemplate";
 
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";

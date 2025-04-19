@@ -1,6 +1,7 @@
+// src/utils/tokenUtils.js
 import { jwtDecode } from "jwt-decode";
 
-const decodeToken = () => {
+export const decodeToken = () => {
   try {
     const token = localStorage.getItem("token");
     if (!token) return null;
@@ -10,5 +11,3 @@ const decodeToken = () => {
     return null;
   }
 };
-
-export default decodeToken;

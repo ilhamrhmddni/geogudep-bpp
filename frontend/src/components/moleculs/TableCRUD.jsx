@@ -14,15 +14,16 @@ const TableCRUD = ({ headers, data, onEdit, onDelete }) => {
       </thead>
       <tbody>
         {data.length > 0 ? (
-          data.map((item, index) => (
-            <tr key={index}>
+          data.map((item) => (
+            <tr key={item.id || item.kode || data.indexOf(item)}>
+              {/* Gunakan properti unik sebagai key atau index jika tidak ada ID/kode yang stabil */}
               {headers.map((header) => (
                 <td
-                  key={header.key}
+                  key={`${item.id}-${header.key}`}
                   className="border border-none px-2 py-1 text-center"
                 >
                   {header.key === "no" ? (
-                    index + 1
+                    data.indexOf(item) + 1 // Hitung nomor urut berdasarkan posisi di array
                   ) : header.key === "actions" ? (
                     <div className="flex items-center justify-center">
                       <button

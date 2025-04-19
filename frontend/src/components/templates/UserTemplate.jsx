@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import HeaderUser from "../organisms/HeaderUser";
 import SidebarMenuUser from "../organisms/SidebarMenuUser"; // Mengimpor Sidebar
 
 const UserTemplate = ({ children }) => {
@@ -53,7 +52,6 @@ const UserTemplate = ({ children }) => {
           transition: "margin-left 0.3s ease",
         }}
       >
-        <HeaderUser />
         {/* Konten halaman utama */}
         <div className="p-4">{children}</div>
       </div>

@@ -3,7 +3,6 @@ const cors = require("cors");
 const morgan = require("morgan");
 const multer = require("multer");
 const axios = require("axios");
-const path = require("path");
 require("dotenv").config();
 const db = require("./src/models");
 

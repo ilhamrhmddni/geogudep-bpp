@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
-import AddButton from "../../atoms/AddButton";
-import SearchInput from "../../atoms/SearchInput";
+import ListHeader from "../../moleculs/ListHeader"; // Import ListHeader
 import TableCRUD from "../../moleculs/TableCRUD";
 import OperatorTemplate from "../../templates/OperatorTemplate";
 
@@ -15,7 +14,7 @@ import {
   deletePesertadidik,
   fetchPesertadidik,
 } from "../../../services/PesertadidikService";
-import decodeToken from "../../../utils/jwt";
+import { decodeToken } from "../../../utils/jwt";
 
 const OperatorPesertaDidik = () => {
   const navigate = useNavigate();
@@ -27,115 +26,145 @@ const OperatorPesertaDidik = () => {
   const tokenData = decodeToken();
   const gudepId = tokenData?.gudep_id;
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        if (!gudepId) throw new Error("Gudep ID tidak ditemukan di token.");
-
-        const response = await fetchPesertadidik(gudepId);
-        const fetchedData = Array.isArray(response.data)
-          ? response.data.filter((item) => item.gudep_id === gudepId)
-          : [];
-
-        setData(fetchedData);
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError("Gagal mengambil data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (!gudepId) throw new Error("Gudep ID tidak ditemukan di token.");
+      const response = await fetchPesertadidik(gudepId);
+      setData(response.data.filter((item) => item.gudep_id === gudepId));
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError("Gagal mengambil data.");
+    } finally {
+      setLoading(false);
+    }
   }, [gudepId]);
 
-  const headers = [
-    { key: "no", label: "No", width: "w-1/12" },
-    { key: "nama", label: "Nama Peserta Didik", width: "w-5/12" },
-    { key: "gender", label: "Jenis Kelamin", width: "w-1/12" },
-    { key: "ttl", label: "Tanggal Lahir", width: "w-2/12" },
-    { key: "detailtingkatan", label: "Detail Tingkatan", width: "w-2/12" },
-    { key: "actions", label: "Aksi", width: "w-1/12" },
-  ];
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  const handleSearchChange = (e) => setSearchQuery(e.target.value);
+  const headers = useMemo(
+    () => [
+      { key: "no", label: "No", width: "w-1/12" },
+      { key: "nama", label: "Nama Peserta Didik", width: "w-5/12" },
+      { key: "gender", label: "Jenis Kelamin", width: "w-1/12" },
+      { key: "ttl", label: "Tanggal Lahir", width: "w-2/12" },
+      { key: "detailtingkatan", label: "Detail Tingkatan", width: "w-2/12" },
+      { key: "actions", label: "Aksi", width: "w-1/12" },
+    ],
+    []
+  );
 
-  const handleEdit = (item) => {
-    navigate(`/operator/pesertadidik/edit/${item.id}`);
-  };
+  const handleSearchChange = useCallback(
+    (e) => setSearchQuery(e.target.value),
+    []
+  );
 
-  const handleDelete = async (id) => {
-    const confirmDelete = await Swal.fire({
-      title: "Yakin ingin menghapus?",
-      text: "Data yang dihapus tidak dapat dikembalikan!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Ya, hapus!",
-    });
+  const handleEdit = useCallback(
+    (item) => {
+      navigate(`/operator/pesertadidik/edit/${item.id}`);
+    },
+    [navigate]
+  );
 
-    if (confirmDelete.isConfirmed) {
-      try {
-        const peserta = data.find((item) => item.id === id);
-        const gender = peserta?.gender;
+  const handleDelete = useCallback(
+    async (id) => {
+      const confirmDelete = await Swal.fire({
+        title: "Yakin ingin menghapus?",
+        text: "Data yang dihapus tidak dapat dikembalikan!",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "Ya, hapus!",
+      });
 
-        await deletePesertadidik(id);
-        Swal.fire("Berhasil!", "Data berhasil dihapus.", "success");
+      if (confirmDelete.isConfirmed) {
+        try {
+          const peserta = data.find((item) => item.id === id);
+          const gender = peserta?.gender;
 
-        const gugusData = await fetchGugusdepanId(gudepId);
-        const jumlahPutra = gugusData.data.jumlah_putra || 0;
-        const jumlahPutri = gugusData.data.jumlah_putri || 0;
+          await deletePesertadidik(id);
+          Swal.fire("Berhasil!", "Data berhasil dihapus.", "success");
 
-        await editGugusdepan(gudepId, {
-          jumlah_putra: gender === "Laki-laki" ? jumlahPutra - 1 : jumlahPutra,
-          jumlah_putri: gender === "Perempuan" ? jumlahPutri - 1 : jumlahPutri,
-        });
+          const gugusData = await fetchGugusdepanId(gudepId);
+          await editGugusdepan(gudepId, {
+            jumlah_putra:
+              gender === "Laki-laki"
+                ? (gugusData.data.jumlah_putra || 0) - 1
+                : gugusData.data.jumlah_putra || 0,
+            jumlah_putri:
+              gender === "Perempuan"
+                ? (gugusData.data.jumlah_putri || 0) - 1
+                : gugusData.data.jumlah_putri || 0,
+          });
 
-        const updatedResponse = await fetchPesertadidik(gudepId);
-        const updatedData = Array.isArray(updatedResponse.data)
-          ? updatedResponse.data.filter((item) => item.gudep_id === gudepId)
-          : [];
-
-        setData(updatedData);
-      } catch (err) {
-        console.error("Gagal menghapus peserta:", err);
-        Swal.fire("Gagal!", "Terjadi kesalahan saat menghapus.", "error");
+          fetchData(); // Refresh data setelah menghapus
+        } catch (err) {
+          console.error("Gagal menghapus peserta:", err);
+          Swal.fire("Gagal!", "Terjadi kesalahan saat menghapus.", "error");
+        }
       }
-    }
-  };
+    },
+    [data, fetchData, gudepId]
+  );
 
-  const filteredData = data
-    .filter((item) => {
-      const query = searchQuery.toLowerCase();
-      return (
-        item.nama.toLowerCase().includes(query) ||
-        item.detailtingkatan.toLowerCase().includes(query)
-      );
-    })
-    .sort((a, b) => {
-      // Laki-laki (prioritas) harus muncul dulu
-      if (a.gender === "Laki-laki" && b.gender === "Perempuan") return -1;
-      if (a.gender === "Perempuan" && b.gender === "Laki-laki") return 1;
-      return 0; // sisanya tetap urutan aslinya
-    });
+  const filteredData = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return data
+      .filter(
+        (item) =>
+          item.nama.toLowerCase().includes(query) ||
+          item.detailtingkatan.toLowerCase().includes(query)
+      )
+      .sort((a, b) => {
+        if (a.gender === "Laki-laki" && b.gender === "Perempuan") return -1;
+        if (a.gender === "Perempuan" && b.gender === "Laki-laki") return 1;
+        return 0;
+      });
+  }, [data, searchQuery]);
+
+  const rowActions = useMemo(
+    () => [
+      {
+        label: "Edit",
+        icon: "edit",
+        onClick: handleEdit,
+      },
+      {
+        label: "Hapus",
+        icon: "delete",
+        onClick: handleDelete,
+        color: "red",
+      },
+    ],
+    [handleDelete, handleEdit]
+  );
+
+  const transformedData = useMemo(() => {
+    return filteredData.map((item, index) => ({
+      no: index + 1,
+      nama: item.nama,
+      gender: item.gender,
+      ttl: new Date(item.ttl).toLocaleDateString("id-ID"),
+      detailtingkatan: item.detailtingkatan,
+      actions: item, // Kirim item untuk digunakan di TableCRUD
+    }));
+  }, [filteredData]);
 
   return (
     <OperatorTemplate>
       <div className="ml-18 rounded-xl shadow-xl">
         <div className="p-4">
-          <div className="flex bg-[#9500FF] rounded-2xl mx-2">
-            <span
-              className="items-center text-2xl font-bold px-12 m-auto flex justify-center text-white"
-              style={{ whiteSpace: "nowrap" }}
-            >
-              Data Peserta Didik
-            </span>
-            <SearchInput value={searchQuery} onChange={handleSearchChange} />
-            <AddButton route="/operator/pesertadidik/add" />
-          </div>
+          <ListHeader
+            title="Data Peserta Didik"
+            searchQuery={searchQuery}
+            setSearchQuery={handleSearchChange}
+            addButtonLabel="Tambah Peserta Didik"
+            addButtonRoute="/operator/pesertadidik/add"
+          />
 
           {loading && <p className="text-center mt-4">Memuat data...</p>}
           {error && <p className="text-center mt-4 text-red-500">{error}</p>}
@@ -145,9 +174,10 @@ const OperatorPesertaDidik = () => {
           ) : (
             <TableCRUD
               headers={headers}
-              data={filteredData}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
+              data={transformedData}
+              rowActions={rowActions}
+              onEdit={handleEdit} // Pastikan ini juga diteruskan jika TableCRUD membutuhkannya secara terpisah
+              onDelete={handleDelete} // Pastikan ini juga diteruskan jika TableCRUD membutuhkannya secara terpisah
             />
           )}
         </div>

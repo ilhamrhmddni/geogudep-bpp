@@ -39,6 +39,10 @@ const Gudep = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    ambalan: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     no_gudep: {
       type: DataTypes.STRING,
       allowNull: true,

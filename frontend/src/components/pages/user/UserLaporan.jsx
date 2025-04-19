@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2"; // Import SweetAlert2
 import { createLaporan } from "../../../services/LaporanService";
+import HeaderUser from "../../organisms/HeaderUser";
 import UserTemplate from "../../templates/UserTemplate";
 
 const UserLaporan = () => {
@@ -64,7 +65,8 @@ const UserLaporan = () => {
 
   return (
     <UserTemplate>
-      <div className="flex flex-col">
+      <HeaderUser />
+      <div className="flex flex-col mt-8">
         <div className="flex items-center p-4 m-auto w-full ml-20">
           <h1 className="text-3xl font-bold flex-grow text-center mr-24 text-[#9500FF]">
             Tambah Data Laporan

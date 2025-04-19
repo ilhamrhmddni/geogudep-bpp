@@ -6,6 +6,9 @@ import {
   editEvent,
   fetchEventById,
 } from "../../../services/EventService";
+import Label from "../../atoms/FormLabel";
+import SelectInput from "../../atoms/SelectInput";
+import Input from "../../atoms/TextInput";
 import AdminTemplate from "../../templates/AdminTemplate";
 
 const AdminEventForm = ({ isEdit }) => {
@@ -19,32 +22,36 @@ const AdminEventForm = ({ isEdit }) => {
   const { id } = useParams();
 
   const tingkatOptions = [
-    "Gugus Depan",
-    "Ranting",
-    "Cabang",
-    "Daerah",
-    "Nasional",
-    "Internasional",
+    { value: "Gugus Depan", label: "Gugus Depan" },
+    { value: "Ranting", label: "Ranting" },
+    { value: "Cabang", label: "Cabang" },
+    { value: "Daerah", label: "Daerah" },
+    { value: "Nasional", label: "Nasional" },
+    { value: "Internasional", label: "Internasional" },
   ];
 
-  // Fetch data if editing
+  const handleInputChange = (setState) => (e) => {
+    setState(e.target.value);
+  };
+
+  const formatDate = (dateString) => dateString?.split("T")[0] || "";
+
   useEffect(() => {
     if (isEdit && id) {
       const fetchData = async () => {
         try {
-          const result = await fetchEventById(id);
-          const { data } = result;
+          const { data } = await fetchEventById(id);
           setNama(data.nama);
-          setTanggalMulai(data.tanggal_mulai?.split("T")[0] || "");
-          setTanggalSelesai(data.tanggal_selesai?.split("T")[0] || "");
+          setTanggalMulai(formatDate(data.tanggal_mulai));
+          setTanggalSelesai(formatDate(data.tanggal_selesai));
           setTempat(data.tempat);
           setTingkat(data.tingkat);
           setPenyelenggara(data.penyelenggara);
         } catch (error) {
           console.error("Error fetching data:", error);
+          Swal.fire("Error!", "Gagal mengambil data event.", "error");
         }
       };
-
       fetchData();
     }
   }, [id, isEdit]);
@@ -52,33 +59,31 @@ const AdminEventForm = ({ isEdit }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (
-      !nama ||
-      !tanggalMulai ||
-      !tanggalSelesai ||
-      !tempat ||
-      !tingkat ||
-      !penyelenggara
-    ) {
-      Swal.fire({
+    const isFormValid =
+      nama &&
+      tanggalMulai &&
+      tanggalSelesai &&
+      tempat &&
+      tingkat &&
+      penyelenggara;
+
+    if (!isFormValid) {
+      return Swal.fire({
         icon: "warning",
         title: "Peringatan",
         text: "Pastikan semua data terisi dengan benar.",
       });
-      return;
     }
 
-    // Validasi tanggal
     if (new Date(tanggalMulai) > new Date(tanggalSelesai)) {
-      Swal.fire({
+      return Swal.fire({
         icon: "error",
         title: "Kesalahan",
         text: "Tanggal mulai tidak boleh lebih lama dari tanggal selesai.",
       });
-      return;
     }
 
-    const confirmSubmit = await Swal.fire({
+    const confirmResult = await Swal.fire({
       title: isEdit ? "Ubah Data Event" : "Simpan Event Baru",
       text: isEdit
         ? "Apakah kamu yakin ingin mengubah data event ini?"
@@ -91,12 +96,11 @@ const AdminEventForm = ({ isEdit }) => {
       cancelButtonText: "Batal",
     });
 
-    if (!confirmSubmit.isConfirmed) {
-      console.log("Form submission canceled.");
+    if (!confirmResult.isConfirmed) {
       return;
     }
 
-    const newData = {
+    const eventData = {
       nama,
       tanggal_mulai: tanggalMulai,
       tanggal_selesai: tanggalSelesai,
@@ -106,18 +110,18 @@ const AdminEventForm = ({ isEdit }) => {
     };
 
     try {
-      if (isEdit && id) {
-        await editEvent(id, newData);
-        Swal.fire("Sukses!", "Data event berhasil diubah.", "success");
-      } else {
-        await createEvent(newData);
-        Swal.fire("Sukses!", "Event baru telah disimpan.", "success");
-      }
-
+      const action =
+        isEdit && id ? editEvent(id, eventData) : createEvent(eventData);
+      await action;
+      Swal.fire(
+        "Sukses!",
+        `Data event berhasil ${isEdit ? "diubah" : "disimpan"}.`,
+        "success"
+      );
       navigate("/admin/event");
     } catch (error) {
-      Swal.fire("Error!", "Terjadi kesalahan saat menyimpan data.", "error");
       console.error("Error submitting form:", error);
+      Swal.fire("Error!", "Terjadi kesalahan saat menyimpan data.", "error");
     }
   };
 
@@ -141,83 +145,65 @@ const AdminEventForm = ({ isEdit }) => {
           <div className="p-8 bg-white rounded-lg shadow-xl text-left w-full mx-4 ml-24">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">
-                  Nama Event
-                </label>
-                <input
+                <Label text="Nama Event" htmlFor="nama" />
+                <Input
                   type="text"
+                  id="nama"
                   value={nama}
-                  onChange={(e) => setNama(e.target.value)}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                  onChange={handleInputChange(setNama)}
                   required
                 />
               </div>
 
               <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">
-                  Tanggal Mulai
-                </label>
-                <input
+                <Label text="Tanggal Mulai" htmlFor="tanggalMulai" />
+                <Input
                   type="date"
+                  id="tanggalMulai"
                   value={tanggalMulai}
-                  onChange={(e) => setTanggalMulai(e.target.value)}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                  onChange={handleInputChange(setTanggalMulai)}
                   required
                 />
               </div>
 
               <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">
-                  Tanggal Selesai
-                </label>
-                <input
+                <Label text="Tanggal Selesai" htmlFor="tanggalSelesai" />
+                <Input
                   type="date"
+                  id="tanggalSelesai"
                   value={tanggalSelesai}
-                  onChange={(e) => setTanggalSelesai(e.target.value)}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                  onChange={handleInputChange(setTanggalSelesai)}
                   required
                 />
               </div>
 
               <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">Tempat</label>
-                <input
+                <Label text="Tempat" htmlFor="tempat" />
+                <Input
                   type="text"
+                  id="tempat"
                   value={tempat}
-                  onChange={(e) => setTempat(e.target.value)}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                  onChange={handleInputChange(setTempat)}
                   required
                 />
               </div>
 
-              <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">Tingkat</label>
-                <select
-                  value={tingkat}
-                  onChange={(e) => setTingkat(e.target.value)}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
-                  required
-                >
-                  <option value="" disabled>
-                    Pilih Tingkat
-                  </option>
-                  {tingkatOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SelectInput
+                label="Tingkat"
+                id="tingkat"
+                value={tingkat}
+                onChange={handleInputChange(setTingkat)}
+                options={tingkatOptions}
+                required
+              />
 
               <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">
-                  Penyelenggara
-                </label>
-                <input
+                <Label text="Penyelenggara" htmlFor="penyelenggara" />
+                <Input
                   type="text"
+                  id="penyelenggara"
                   value={penyelenggara}
-                  onChange={(e) => setPenyelenggara(e.target.value)}
-                  className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+                  onChange={handleInputChange(setPenyelenggara)}
                   required
                 />
               </div>

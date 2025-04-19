@@ -1,160 +1,128 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchGeografis } from "../../../services/GeografisService";
-import { fetchKwarran } from "../../../services/KwarranService";
-import SearchInput from "../../atoms/SearchInput";
+import DetailCell from "../../atoms/DetailCell";
+import ErrorMessage from "../../atoms/ErrorMessage";
+import LoadingSpinner from "../../atoms/LoadingSpinner";
+import NoDataMessage from "../../atoms/NoDataMessage";
+import ListHeader from "../../moleculs/ListHeader"; // Menggunakan ListHeader
 import TableR from "../../moleculs/TableR";
 import AdminTemplate from "../../templates/AdminTemplate";
 
 const AdminGeografis = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [data, setData] = useState([]);
-  const [kwarranList, setKwarranList] = useState([]);
-  const [selectedKwarran, setSelectedKwarran] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const result = await fetchGeografis();
-        console.log("Data Geografis:", result.data); // Log data yang diterima
-        setData(Array.isArray(result.data) ? result.data : []);
-        setError(null);
-      } catch (error) {
-        setError(`Error fetching data: ${error.message}`);
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+  // Fetch initial data
+  const fetchInitialData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const result = await fetchGeografis();
+      setData(Array.isArray(result.data) ? result.data : []);
+      setError(null);
+    } catch (err) {
+      setError(`Gagal mengambil data: ${err.message}`);
+      console.error("Error fetching data:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    const fetchKwarranData = async () => {
-      try {
-        const result = await fetchKwarran();
-        setKwarranList(result.data || []);
-      } catch (error) {
-        console.error("Error fetching Kwarran data:", error);
-      }
-    };
+    fetchInitialData();
+  }, [fetchInitialData]);
 
-    fetchKwarranData();
-  }, []);
+  const headers = useMemo(
+    () => [
+      { key: "no", label: "No", width: "w-1/20" },
+      { key: "no_gudep", label: "No. Gudep", width: "w-2/20" },
+      { key: "latitude", label: "Latitude", width: "w-1/20" },
+      { key: "longitude", label: "Longitude", width: "w-1/20" },
+      { key: "titik_koordinat", label: "Titik Koordinat", width: "w-1/20" },
+      { key: "alamat", label: "Alamat", width: "w-8/20" },
+      { key: "maps_link", label: "Aksi", width: "w-1/20" },
+    ],
+    []
+  );
 
-  const headers = [
-    { key: "no_gudep", label: "No. Gudep" },
-    { key: "latitude", label: "Latitude" },
-    { key: "longitude", label: "Longitude" },
-    { key: "titik_koordinat", label: "Titik Koordinat" },
-    { key: "alamat", label: "Alamat" },
-    { key: "maps_link", label: "Aksi" },
-  ];
+  const handleSearchChange = useCallback(
+    (e) => setSearchQuery(e.target.value),
+    []
+  );
 
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-  };
+  const filteredData = useMemo(() => {
+    return data
+      .map((item, index) => {
+        const noGudepValue = item.gudepes?.no_gudep || "-";
+        const latitudeValue = item.latitude || null;
+        const longitudeValue = item.longitude || null;
 
-  const handleKwarranChange = (e) => {
-    setSelectedKwarran(e.target.value);
-  };
-
-  const filteredData = data
-    .map((item) => {
-      const noGudepValue = item.gudepes?.no_gudep || null;
-      const latitudeValue = item.latitude || null;
-      const longitudeValue = item.longitude || null;
-
-      return {
-        ...item,
-        no_gudep: noGudepValue ? noGudepValue : "-",
-        maps_link: (
-          <a
-            href={`https://www.google.com/maps?q=$${latitudeValue},${longitudeValue}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <button
-              className="px-3 py-1 bg-[#9500FF] text-white rounded hover:bg-[#590396] transition cursor-pointer"
-              disabled={!latitudeValue || !longitudeValue}
+        return {
+          ...item,
+          no: index + 1,
+          no_gudep: noGudepValue === "ADMIN" ? "-" : noGudepValue,
+          titik_koordinat: (
+            <DetailCell
+              title="Lihat"
+              details={[
+                { label: "Titik Koordinat", value: item.titik_koordinat },
+              ]}
+            />
+          ),
+          maps_link: (
+            <a
+              href={`https://www.google.com/maps?q=${latitudeValue},${longitudeValue}`}
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              📍 Lihat di Maps
-            </button>
-          </a>
-        ),
-        titik_koordinat:
-          latitudeValue && longitudeValue
-            ? `${latitudeValue}, ${longitudeValue}`
-            : "-",
-      };
-    })
-    .filter((item) => {
-      const matchesSearch =
-        (item.alamat ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.latitude ?? "").toString().includes(searchQuery) ||
-        (item.longitude ?? "").toString().includes(searchQuery) ||
-        (item.no_gudep === "Data belum tersedia"
-          ? false
-          : (item.no_gudep ?? "")
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()));
+              <button
+                className="px-2 bg-[#9500FF] text-white rounded hover:bg-[#590396] transition cursor-pointer"
+                disabled={!latitudeValue || !longitudeValue}
+                title="Lihat di Maps"
+              >
+                <span className="material-icons">near_me</span>
+              </button>
+            </a>
+          ),
+        };
+      })
+      .filter((item) => {
+        const searchMatch =
+          (item.alamat ?? "")
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          (item.latitude ?? "").toString().includes(searchQuery) ||
+          (item.longitude ?? "").toString().includes(searchQuery) ||
+          (item.no_gudep ?? "")
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase());
 
-      const matchesKwarran = selectedKwarran
-        ? item.Gudep?.kwarran_id === selectedKwarran
-        : true;
-
-      const isNotAdmin = item.gudepes?.no_gudep !== "ADMIN";
-
-      return matchesSearch && matchesKwarran && isNotAdmin;
-    });
+        return searchMatch && item.gudepes?.no_gudep !== "ADMIN";
+      });
+  }, [data, searchQuery]);
 
   return (
     <AdminTemplate>
       <div className="ml-18 rounded-xl shadow-xl">
         <div className="p-4">
-          <div className="flex bg-[#9500FF] rounded-2xl mx-2">
-            <span
-              className="items-center text-2xl font-bold px-12 m-auto flex justify-center text-white"
-              style={{ whiteSpace: "nowrap" }}
-            >
-              Data Geografis
-            </span>
-            <SearchInput
-              value={searchQuery}
-              onChange={handleSearchChange}
-              placeholder="Cari berdasarkan alamat, latitude, atau longitude"
-            />
-            <select
-              className="m-2 p-2 border-2 border-white rounded-md text-white font-bold cursor-pointer"
-              value={selectedKwarran}
-              onChange={handleKwarranChange}
-            >
-              <option value="" className="text-[#9500FF] font-bold ">
-                Kwarran
-              </option>
-              {kwarranList.map((kwarran) => (
-                <option
-                  key={kwarran.id}
-                  value={kwarran.id}
-                  className="text-[#9500FF] font-bold"
-                >
-                  {kwarran.nama}
-                </option>
-              ))}
-            </select>
+          <ListHeader
+            title="Data Geografis"
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery} // Perbaikan: menggunakan setSearchQuery
+          />
+
+          <div className="mt-4">
+            {loading ? (
+              <LoadingSpinner />
+            ) : error ? (
+              <ErrorMessage message={error} />
+            ) : filteredData.length === 0 ? (
+              <NoDataMessage message="Data geografis tidak ditemukan." />
+            ) : (
+              <TableR headers={headers} data={filteredData} />
+            )}
           </div>
-
-          {loading && <p className="text-center mt-4">Loading data...</p>}
-          {error && <p className="text-center mt-4 text-red-500">{error}</p>}
-
-          {filteredData.length === 0 && !loading ? (
-            <p className="text-center mt-4">Data tidak ditemukan</p>
-          ) : (
-            <TableR headers={headers} data={filteredData} />
-          )}
         </div>
       </div>
     </AdminTemplate>
