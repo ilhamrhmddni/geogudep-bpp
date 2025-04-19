@@ -12,8 +12,6 @@ const rootRoutes = require("./src/routes");
 // 🛠 Middleware
 app.use(cors()); // Mengaktifkan CORS
 app.use(express.json()); // Parsing JSON request body
-app.use(express.urlencoded({ extended: true })); // Parsing URL-encoded data
-app.use(morgan("dev")); // Logging request
 
 // Konfigurasi multer untuk upload file
 const storage = multer.memoryStorage();
@@ -63,7 +61,7 @@ app.use((err, req, res, next) => {
     .json({ message: "Terjadi kesalahan server", error: err.message });
 });
 
-const port = process.env.PORT || 3000;
+const port = process.env.DB_HOST || 3000;
 
 // 🛠 Cek Koneksi Database & Jalankan Server
 db.sequelize
