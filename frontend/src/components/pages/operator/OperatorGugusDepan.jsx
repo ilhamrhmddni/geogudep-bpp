@@ -9,22 +9,25 @@ import { decodeToken } from "../../../utils/jwt";
 import OperatorTemplate from "../../templates/OperatorTemplate";
 
 const OperatorGugusdepan = () => {
+  // State untuk menyimpan data Gugusdepan
   const [data, setData] = useState(null);
-  const [kwarranList, setKwarranList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [jumlahPutra, setJumlahPutra] = useState(0);
-  const [jumlahPutri, setJumlahPutri] = useState(0);
-  const [noGudep, setNoGudep] = useState("");
-  const [pangkalan, setPangkalan] = useState(""); // Pangkalan state
-  const [ambalan, setAmbalan] = useState(""); // Pangkalan state
-  const [isEditable, setIsEditable] = useState(false);
+  const [kwarranList, setKwarranList] = useState([]); // Daftar Kwarran
+  const [loading, setLoading] = useState(true); // Status loading
+  const [error, setError] = useState(null); // Pesan error
+  const [jumlahPutra, setJumlahPutra] = useState(0); // Jumlah putra
+  const [jumlahPutri, setJumlahPutri] = useState(0); // Jumlah putri
+  const [noGudep, setNoGudep] = useState(""); // Nomor Gudep
+  const [pangkalan, setPangkalan] = useState(""); // Nama pangkalan
+  const [ambalan, setAmbalan] = useState(""); // Nama ambalan
+  const [isEditable, setIsEditable] = useState(false); // Status edit
 
+  // Decode token untuk mendapatkan gudep_id
   const tokenData = decodeToken();
   const gudepId = tokenData?.gudep_id;
 
-  if (!gudepId) throw new Error("Gudep ID not found in token.");
+  if (!gudepId) throw new Error("Gudep ID tidak ditemukan di token.");
 
+  // Ambil data Gugusdepan berdasarkan ID
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -34,11 +37,11 @@ const OperatorGugusdepan = () => {
         setJumlahPutra(result.data.jumlah_putra || 0);
         setJumlahPutri(result.data.jumlah_putri || 0);
         setNoGudep(result.data.no_gudep || "");
-        setPangkalan(result.data.pangkalan || ""); // Initialize pangkalan
-        setAmbalan(result.data.ambalan || ""); // Initialize pangkalan
+        setPangkalan(result.data.pangkalan || "");
+        setAmbalan(result.data.ambalan || "");
         setError(null);
       } catch (error) {
-        setError("Error fetching data.");
+        setError("Gagal mengambil data Gugusdepan.");
         console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
@@ -48,6 +51,7 @@ const OperatorGugusdepan = () => {
     fetchData();
   }, [gudepId]);
 
+  // Ambil data Kwarran
   useEffect(() => {
     const fetchKwarranData = async () => {
       try {
@@ -61,8 +65,10 @@ const OperatorGugusdepan = () => {
     fetchKwarranData();
   }, []);
 
+  // Fungsi untuk mengaktifkan mode edit
   const handleEditClick = () => setIsEditable(true);
 
+  // Fungsi untuk menyimpan data yang telah diubah
   const handleSubmit = async () => {
     Swal.fire({
       title: "Konfirmasi",
@@ -81,19 +87,20 @@ const OperatorGugusdepan = () => {
             jumlah_putra: jumlahPutra,
             jumlah_putri: jumlahPutri,
             no_gudep: noGudep,
-            pangkalan: pangkalan, // Include pangkalan in the submission
-            ambalan: ambalan, // Include pangkalan in the submission
+            pangkalan: pangkalan,
+            ambalan: ambalan,
           });
 
           Swal.fire("Sukses!", "Data Anda telah disimpan.", "success");
 
+          // Refresh data setelah berhasil disimpan
           const updatedResult = await fetchGugusdepanId(gudepId);
           setData(updatedResult.data);
           setJumlahPutra(updatedResult.data.jumlah_putra || 0);
           setJumlahPutri(updatedResult.data.jumlah_putri || 0);
           setNoGudep(updatedResult.data.no_gudep || "");
-          setPangkalan(updatedResult.data.pangkalan || ""); // Update pangkalan
-          setAmbalan(updatedResult.data.ambalan || ""); // Update pangkalan
+          setPangkalan(updatedResult.data.pangkalan || "");
+          setAmbalan(updatedResult.data.ambalan || "");
           setIsEditable(false);
         } catch (error) {
           Swal.fire("Error!", "Gagal menyimpan data.", "error");
@@ -105,11 +112,12 @@ const OperatorGugusdepan = () => {
 
   return (
     <OperatorTemplate>
-      <div className="ml-18 rounded-xl shadow-xl">
+      <div className="md:ml-18 rounded-xl shadow-xl mt-20 md:mt-0">
         <div className="p-4">
+          {/* Header */}
           <div className="flex bg-[#9500FF] rounded-2xl mx-2 px-2">
             <span
-              className="items-center text-2xl font-bold px-12 m-auto flex justify-center text-white"
+              className="items-center md:text-2xl text-xl font-bold md:px-12 m-auto flex justify-center text-white"
               style={{ whiteSpace: "nowrap" }}
             >
               Data Gugus Depan
@@ -121,29 +129,31 @@ const OperatorGugusdepan = () => {
                   className="bg-[#9500FF] text-white px-4 py-2 rounded-2xl border-2 border-white cursor-pointer font-bold flex gap-2"
                 >
                   <span className="material-icons">save</span>
-                  Simpan
+                  <div className="hidden md:visible">Simpan</div>
                 </button>
               ) : (
                 <button
                   onClick={handleEditClick}
-                  className="bg-white text-[#9500FF] px-4 py-2 rounded-2xl border-2 border-[#9500FF] cursor-pointer font-bold flex gap-2"
+                  className="bg-white text-[#9500FF] md:px-4 px-3 py-2 rounded-2xl border-2 border-[#9500FF] cursor-pointer font-bold flex gap-2"
                 >
                   <span className="material-icons">edit</span>
-                  Ubah
+                  <div className="hidden md:visible">Ubah</div>
                 </button>
               )}
             </div>
           </div>
 
-          {loading && <p className="text-center mt-4">Loading data...</p>}
+          {/* Loading atau Error */}
+          {loading && <p className="text-center mt-4">Memuat data...</p>}
           {error && <p className="text-center mt-4 text-red-500">{error}</p>}
 
+          {/* Form Data Gugusdepan */}
           {data && (
-            <div className="my-4 space-y-4 px-4 ">
+            <form onSubmit={handleSubmit} className="m-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
-                    Kwarran:
+                    Kwarran
                   </label>
                   <select
                     value={data.kwarran_id || ""}
@@ -165,7 +175,7 @@ const OperatorGugusdepan = () => {
                 </div>
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
-                    Tingkatan:
+                    Tingkatan
                   </label>
                   <select
                     value={data.tingkatan || ""}
@@ -185,10 +195,11 @@ const OperatorGugusdepan = () => {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 my-4">
                 <div className="md:col-span-2">
                   <label className="text-[#9500FF] font-bold mb-2 block">
-                    No. Gudep:
+                    No. Gudep
                   </label>
                   <input
                     type="text"
@@ -201,10 +212,9 @@ const OperatorGugusdepan = () => {
                     readOnly={!isEditable}
                   />
                 </div>
-
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
-                    Jumlah Putra:
+                    Jumlah Putra
                   </label>
                   <input
                     type="number"
@@ -213,10 +223,9 @@ const OperatorGugusdepan = () => {
                     className="rounded-xl p-3 w-full border border-gray-300 bg-gray-100"
                   />
                 </div>
-
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
-                    Jumlah Putri:
+                    Jumlah Putri
                   </label>
                   <input
                     type="number"
@@ -227,14 +236,14 @@ const OperatorGugusdepan = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
-                    Ambalan:
+                    Ambalan
                   </label>
                   <input
                     type="text"
-                    value={ambalan} // Controlled input for Pangkalan
+                    value={ambalan}
                     onChange={(e) => setAmbalan(e.target.value)}
                     className={`rounded-xl p-3 w-full border border-gray-300 ${
                       !isEditable ? "bg-gray-100" : ""
@@ -245,11 +254,11 @@ const OperatorGugusdepan = () => {
                 </div>
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
-                    Pangkalan:
+                    Pangkalan
                   </label>
                   <input
                     type="text"
-                    value={pangkalan} // Controlled input for Pangkalan
+                    value={pangkalan}
                     onChange={(e) => setPangkalan(e.target.value)}
                     className={`rounded-xl p-3 w-full border border-gray-300 ${
                       !isEditable ? "bg-gray-100" : ""
@@ -259,9 +268,10 @@ const OperatorGugusdepan = () => {
                   />
                 </div>
               </div>
-              <div>
+
+              <div className="my-4">
                 <label className="text-[#9500FF] font-bold mb-2 block">
-                  Mabigus:
+                  Mabigus
                 </label>
                 <input
                   type="text"
@@ -277,10 +287,10 @@ const OperatorGugusdepan = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
-                    Pembina:
+                    Pembina
                   </label>
                   <input
                     type="text"
@@ -297,7 +307,7 @@ const OperatorGugusdepan = () => {
                 </div>
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
-                    Pelatih:
+                    Pelatih
                   </label>
                   <input
                     type="text"
@@ -313,7 +323,7 @@ const OperatorGugusdepan = () => {
                   />
                 </div>
               </div>
-            </div>
+            </form>
           )}
 
           {!data && !loading && (

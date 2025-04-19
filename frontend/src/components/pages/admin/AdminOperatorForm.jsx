@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import {
@@ -22,60 +22,74 @@ const AdminOperatorForm = ({ isEdit }) => {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  // Fetch data ketika component dimount
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-
-      if (isEdit && id) {
-        // Mode edit: ambil data operator dari API
-        try {
-          const response = await fetchUserId(id);
-          setUsername(response.data.username);
-          setCurrentPassword(response.data.password || "");
-        } catch (err) {
-          console.error("Error fetching data:", err);
-          setError("Failed to fetch operator data.");
-          Swal.fire("Error!", "Failed to fetch operator data.", "error");
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        // Mode tambah: reset form
-        setUsername("");
-        setPassword("");
-        setConfirmPassword("");
-        setShowChangePassword(true); // Di mode tambah, selalu tampilkan password field
-        setShowViewPassword(false);
-        setCurrentPassword("");
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [id, isEdit]);
-
-  // Toggle tampilan form ubah password
-  const handleToggleChangePassword = () => {
-    setShowChangePassword(!showChangePassword);
-    // Reset password fields ketika toggle
+  // Fungsi untuk reset form
+  const resetForm = useCallback(() => {
+    setUsername("");
     setPassword("");
     setConfirmPassword("");
-  };
+    setShowChangePassword(true);
+    setShowViewPassword(false);
+    setCurrentPassword("");
+    setLoading(false);
+  }, []);
 
-  // Toggle tampilan password (show/hide)
-  const handleToggleViewPassword = () => {
+  // Fungsi untuk fetch data operator berdasarkan ID
+  const fetchOperatorData = useCallback(async () => {
+    try {
+      const response = await fetchUserId(id);
+      setUsername(response.data.username);
+      setCurrentPassword(response.data.password || "");
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError("Gagal mengambil data operator.");
+      Swal.fire("Error!", "Gagal mengambil data operator.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  // Fetch data ketika komponen dimount
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+
+    if (isEdit && id) {
+      fetchOperatorData();
+    } else {
+      resetForm();
+    }
+  }, [isEdit, id, fetchOperatorData, resetForm]);
+
+  // Fungsi untuk toggle form ubah password
+  const handleToggleChangePassword = useCallback(() => {
+    setShowChangePassword(!showChangePassword);
+    setPassword("");
+    setConfirmPassword("");
+  }, [showChangePassword]);
+
+  // Fungsi untuk toggle visibilitas password
+  const handleToggleViewPassword = useCallback(() => {
     setShowViewPassword(!showViewPassword);
-  };
+  }, [showViewPassword]);
 
-  // Handler submit form
+  // Fungsi untuk submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    // Cek apakah password dan konfirmasi password sama
+    // Validasi username
+    if (!username.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Peringatan",
+        text: "Username tidak boleh kosong.",
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Validasi password dan konfirmasi password
     if (showChangePassword && password !== confirmPassword) {
       Swal.fire({
         icon: "warning",
@@ -106,34 +120,21 @@ const AdminOperatorForm = ({ isEdit }) => {
     }
 
     try {
-      const userData = new FormData(); // Buat FormData
-
+      const userData = new FormData();
       userData.append("username", username);
       if (showChangePassword && password) {
-        userData.append("password", password); // Tambahkan password jika ada
+        userData.append("password", password);
       }
 
-      console.log("Data yang akan dikirim:", userData);
-
       if (isEdit && id) {
-        // Mode edit: update data operator
-        const result = await editUser(id, userData);
-        console.log("Hasil update:", result);
-
+        await editUser(id, userData);
         Swal.fire("Sukses!", "Data operator berhasil diubah.", "success").then(
-          () => {
-            navigate("/admin/operator");
-          }
+          () => navigate("/admin/operator")
         );
       } else {
-        // Mode tambah: buat operator baru
-        const result = await createUser(userData);
-        console.log("Hasil create:", result);
-
+        await createUser(userData);
         Swal.fire("Sukses!", "Operator baru telah disimpan.", "success").then(
-          () => {
-            navigate("/admin/operator");
-          }
+          () => navigate("/admin/operator")
         );
       }
     } catch (err) {
@@ -147,25 +148,25 @@ const AdminOperatorForm = ({ isEdit }) => {
 
   return (
     <AdminTemplate>
-      <div className="flex flex-col">
-        {/* Header section with back button */}
-        <div className="flex items-center p-4 m-auto w-full ml-20">
+      <div className="flex flex-col mt-20 md:mt-0">
+        {/* Header */}
+        <div className="flex items-center p-4 m-auto w-full md:ml-20">
           <div
-            className="flex items-center gap-4 font-bold text-xl px-4 py-2 bg-[#9500FF] rounded-md text-white cursor-pointer"
+            className="flex items-center gap-4 font-bold text-lg md:text-xl px-4 py-2 bg-[#9500FF] rounded-md text-white cursor-pointer"
             onClick={() => navigate(-1)}
           >
             <span className="material-icons text-white">arrow_back</span>
-            Kembali
+            <span className="hidden md:inline">Kembali</span>
           </div>
-          <h1 className="text-3xl font-bold flex-grow text-center mr-24 text-[#9500FF]">
+          <h1 className="text-2xl md:text-3xl font-bold flex-grow text-center md:mr-24 text-[#9500FF] md:mt-4 mt-0">
             {isEdit ? "Ubah Data Operator" : "Tambah Data Operator"}
           </h1>
         </div>
 
-        {/* Form section */}
+        {/* Form */}
         <div className="flex flex-auto items-center justify-center">
-          <div className="p-8 bg-white rounded-lg shadow-xl text-left w-full mx-4 ml-24">
-            {/* Error message display */}
+          <div className="p-4 md:p-8 bg-white rounded-lg shadow-xl text-left w-full mx-4 md:ml-24">
+            {/* Tampilkan pesan error jika ada */}
             {error && (
               <div
                 className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
@@ -177,17 +178,9 @@ const AdminOperatorForm = ({ isEdit }) => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Hidden username field for accessibility */}
-              <input
-                type="hidden"
-                autoComplete="username"
-                value={username}
-                name="username"
-              />
-
-              {/* Username field */}
+              {/* Input username */}
               <div className="flex flex-col">
-                <label className="mb-1 font-bold text-[#9500FF]">
+                <label className="mb-1 font-semibold text-purple-600">
                   Username
                 </label>
                 <input
@@ -201,11 +194,11 @@ const AdminOperatorForm = ({ isEdit }) => {
                 />
               </div>
 
-              {/* Password fields for Add mode */}
-              {!isEdit && (
+              {/* Input password */}
+              {showChangePassword && (
                 <>
                   <div className="flex flex-col">
-                    <label className="mb-1 font-bold text-[#9500FF]">
+                    <label className="mb-1 font-semibold text-purple-600">
                       Password Baru
                     </label>
                     <input
@@ -214,12 +207,11 @@ const AdminOperatorForm = ({ isEdit }) => {
                       onChange={(e) => setPassword(e.target.value)}
                       className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                       autoComplete="new-password"
-                      required={!isEdit}
+                      required
                     />
                   </div>
-
                   <div className="flex flex-col">
-                    <label className="mb-1 font-bold text-[#9500FF]">
+                    <label className="mb-1 font-semibold text-purple-600">
                       Konfirmasi Password Baru
                     </label>
                     <input
@@ -228,95 +220,13 @@ const AdminOperatorForm = ({ isEdit }) => {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                       autoComplete="new-password"
-                      required={!isEdit}
+                      required
                     />
                   </div>
                 </>
               )}
 
-              {/* Password fields for Edit mode */}
-              {isEdit && (
-                <>
-                  {/* Current password display */}
-                  <div className="flex flex-col">
-                    <label className="mb-1 font-bold text-[#9500FF]">
-                      Password Saat Ini
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showViewPassword ? "text" : "password"}
-                        value={currentPassword}
-                        className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF] w-full"
-                        readOnly
-                        autoComplete="current-password"
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer"
-                        onClick={handleToggleViewPassword}
-                      >
-                        <span className="material-icons">
-                          {showViewPassword ? "visibility_off" : "visibility"}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Toggle button to show/hide change password form */}
-                  {!showChangePassword && (
-                    <button
-                      type="button"
-                      className="text-[#9500FF] hover:text-[#7a00cc] font-semibold"
-                      onClick={handleToggleChangePassword}
-                    >
-                      Ubah Password
-                    </button>
-                  )}
-
-                  {/* Change password form */}
-                  {showChangePassword && (
-                    <>
-                      <div className="flex flex-col">
-                        <label className="mb-1 font-bold text-[#9500FF]">
-                          Password Baru
-                        </label>
-                        <input
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
-                          autoComplete="new-password"
-                          required={showChangePassword}
-                        />
-                      </div>
-
-                      <div className="flex flex-col">
-                        <label className="mb-1 font-bold text-[#9500FF]">
-                          Konfirmasi Password Baru
-                        </label>
-                        <input
-                          type="password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
-                          autoComplete="new-password"
-                          required={showChangePassword}
-                        />
-                      </div>
-
-                      <button
-                        type="button"
-                        className="text-red-500 hover:text-red-700 font-semibold mt-2"
-                        onClick={handleToggleChangePassword}
-                      >
-                        Batal Ubah Password
-                      </button>
-                    </>
-                  )}
-                </>
-              )}
-
-              {/* Submit button */}
+              {/* Tombol submit */}
               <button
                 type="submit"
                 className={`w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md hover:bg-[#7a00cc] transition duration-200 ${

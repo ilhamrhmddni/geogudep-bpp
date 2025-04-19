@@ -5,9 +5,9 @@ import { deleteKwarran, fetchKwarran } from "../../../services/KwarranService";
 import ErrorMessage from "../../atoms/ErrorMessage";
 import LoadingSpinner from "../../atoms/LoadingSpinner";
 import NoDataMessage from "../../atoms/NoDataMessage";
-import ListHeader from "../../moleculs/ListHeader";
 import TableCRUD from "../../moleculs/TableCRUD";
 import AdminTemplate from "../../templates/AdminTemplate";
+import AdminHeader from "../../atoms/AdminHeader";
 
 const AdminKwarran = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -16,7 +16,7 @@ const AdminKwarran = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // Fetching Kwarran data from API
+  // Fetch data Kwarran
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -24,6 +24,7 @@ const AdminKwarran = () => {
       setData(result.data || []);
       setError(null);
     } catch (err) {
+      console.error("Error fetching Kwarran data:", err);
       setError("Gagal mengambil data Kwarran.");
     } finally {
       setLoading(false);
@@ -32,29 +33,30 @@ const AdminKwarran = () => {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]); // Empty dependency array to fetch only on the first render
+  }, [fetchData]);
 
+  // Table headers
   const headers = useMemo(
     () => [
-      { key: "no", label: "No", width: "w-1/20" },
-      { key: "kode", label: "Kode", width: "w-1/20" },
-      { key: "nama", label: "Nama", width: "w-3/20" },
-      { key: "ketua_kwarran", label: "Ketua Kwarran", width: "w-5/20" },
-      { key: "ketua_dkr", label: "Ketua DKR", width: "w-5/20" },
-      { key: "jumlah_gudep", label: "Jumlah Gudep", width: "w-1/20" },
-      { key: "email", label: "Email", width: "w-3/20" },
-      { key: "actions", label: "Aksi", width: "w-1/20" },
+      { key: "no", label: "No", width: "w-1/12" },
+      { key: "kode", label: "Kode", width: "w-2/12" },
+      { key: "nama", label: "Nama", width: "w-2/12" },
+      { key: "ketua_kwarran", label: "Ketua Kwarran", width: "w-3/12" },
+      { key: "ketua_dkr", label: "Ketua DKR", width: "w-2/12" },
+      { key: "jumlah_gudep", label: "Jumlah Gudep", width: "w-1/12" },
+      { key: "email", label: "Email", width: "w-2/12" },
+      { key: "actions", label: "Aksi", width: "w-2/12" },
     ],
     []
   );
 
+  // Edit handler
   const handleEdit = useCallback(
-    (item) => {
-      navigate(`/admin/kwarran/edit/${item.id}`);
-    },
+    (item) => navigate(`/admin/kwarran/edit/${item.id}`),
     [navigate]
   );
 
+  // Delete handler
   const handleDelete = useCallback(
     async (id) => {
       const result = await Swal.fire({
@@ -80,6 +82,7 @@ const AdminKwarran = () => {
             showConfirmButton: false,
           });
         } catch (error) {
+          console.error("Error deleting Kwarran:", error);
           Swal.fire({
             icon: "error",
             title: "Gagal!",
@@ -88,32 +91,39 @@ const AdminKwarran = () => {
         }
       }
     },
-    [deleteKwarran, setData]
-  ); // useCallback dependency
+    [setData]
+  );
 
-  // Filter and sort data
+  // Filter data
   const filteredData = useMemo(() => {
-    return (data || []) // Ensure data is not undefined
-      .map((item, index) => ({ ...item, no: index + 1 }))
-      .filter((item) =>
-        Object.values(item).some((value) =>
-          String(value).toLowerCase().includes(searchQuery.toLowerCase())
+    const query = searchQuery.toLowerCase();
+    return (
+      data
+        ?.filter((item) =>
+          Object.values(item).some((value) =>
+            String(value).toLowerCase().includes(query)
+          )
         )
-      );
-  }, [data, searchQuery]); // useMemo dependency
+        .map((item, index) => ({ ...item, no: index + 1 })) || []
+    );
+  }, [data, searchQuery]);
 
   return (
     <AdminTemplate>
-      <div className="ml-18 rounded-xl shadow-xl">
+      <div className="md:ml-18 rounded-xl shadow-xl mt-10 md:mt-0">
         <div className="p-4">
-          <ListHeader
+          {/* Standardized Header */}
+          <AdminHeader
             title="Data Kwarran"
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            addButtonLabel="Kwarran"
-            addButtonRoute="/admin/kwarran/add"
+            showSearch={true}
+            showAddButton={true}
+            searchValue={searchQuery}
+            onSearchChange={(e) => setSearchQuery(e.target.value)}
+            onAddClick={() => navigate("/admin/kwarran/add")}
           />
-          <div className="mt-4">
+
+          {/* Content */}
+          <div className="mt-6 overflow-x-auto">
             {loading ? (
               <LoadingSpinner />
             ) : error ? (

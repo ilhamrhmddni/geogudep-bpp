@@ -1,29 +1,28 @@
-const API_URL = "http://localhost:3000/";
+const API_URL = "http://localhost:3000/"; // URL dasar API
 
-// Function to edit Gugusdepan data
+// Fungsi untuk mengedit data Gugusdepan berdasarkan ID
 export const editGugusdepan = async (id, item) => {
   try {
     const response = await fetch(`${API_URL}gudep/${id}`, {
       method: "PUT",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json", // Header untuk JSON
       },
-      body: JSON.stringify(item),
+      body: JSON.stringify(item), // Kirim data yang akan diupdate
     });
 
     if (!response.ok) {
-      throw new Error("Failed to edit Gugusdepan");
+      throw new Error("Gagal mengedit data Gugusdepan");
     }
 
-    const updatedItem = await response.json();
-    return updatedItem;
+    return await response.json(); // Mengembalikan data hasil update dari server
   } catch (error) {
-    console.error("Error editing Gugusdepan:", error);
-    throw error;
+    console.error("Error editing Gugusdepan:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };
 
-// Function to delete Gugusdepan data
+// Fungsi untuk menghapus data Gugusdepan berdasarkan ID
 export const deleteGugusdepan = async (id) => {
   try {
     const response = await fetch(`${API_URL}gudep/${id}`, {
@@ -31,92 +30,94 @@ export const deleteGugusdepan = async (id) => {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to delete Gugusdepan");
+      throw new Error("Gagal menghapus data Gugusdepan");
     }
 
-    const result = await response.json(); // Get success response from server
-    return result;
+    return await response.json(); // Mengembalikan respon sukses dari server
   } catch (error) {
-    console.error("Error deleting Gugusdepan:", error);
-    throw error;
+    console.error("Error deleting Gugusdepan:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };
 
-// Function to fetch all Gugusdepan data
+// Fungsi untuk mengambil semua data Gugusdepan
 export const fetchGugusdepan = async () => {
   try {
     const response = await fetch(`${API_URL}gudep`);
 
     if (!response.ok) {
-      throw new Error("Failed to fetch Gugusdepan data");
+      throw new Error("Gagal mengambil data Gugusdepan");
     }
 
-    const data = await response.json(); // Get data in JSON format
-    return data;
+    return await response.json(); // Mengembalikan data yang diterima dari server
   } catch (error) {
-    console.error("Error fetching Gugusdepan:", error);
-    throw error;
+    console.error("Error fetching Gugusdepan:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };
 
-// Function to fetch Gugusdepan by ID
+// Fungsi untuk mengambil data Gugusdepan berdasarkan ID
 export const fetchGugusdepanId = async (id) => {
   try {
     const response = await fetch(`${API_URL}gudep/${id}`);
 
     if (!response.ok) {
-      throw new Error("Failed to fetch Gugusdepan data");
+      throw new Error("Gagal mengambil data Gugusdepan berdasarkan ID");
     }
 
-    const data = await response.json();
-    return data; // Ensure the returned data matches the expected structure
+    return await response.json(); // Mengembalikan data yang diterima dari server
   } catch (error) {
-    console.error("Error fetching Gugusdepan by ID:", error);
-    throw error;
+    console.error("Error fetching Gugusdepan by ID:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };
 
-// Function to create a new Gugusdepan
+// Fungsi untuk membuat data Gugusdepan baru
 export const createGugusdepan = async (data) => {
   try {
     const response = await fetch(`${API_URL}gudep`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json", // Header untuk JSON
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(data), // Kirim data dalam format JSON
     });
-    return await response.json();
+
+    if (!response.ok) {
+      throw new Error("Gagal membuat data Gugusdepan");
+    }
+
+    return await response.json(); // Mengembalikan data hasil dari server
   } catch (error) {
-    console.error("Error creating Gugusdepan:", error);
-    throw error;
+    console.error("Error creating Gugusdepan:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };
 
-// Function to prepare data for creating or editing Gugusdepan
+// Fungsi untuk mempersiapkan data Gugusdepan sebelum dibuat atau diupdate
 export const prepareGugusdepanData = async (gudepData, userId, kwarranId) => {
   try {
-    // Fetch user data
+    // Ambil data pengguna berdasarkan userId
     const userResponse = await fetch(`${API_URL}user/${userId}`);
     const userData = await userResponse.json();
 
-    // Fetch kwarran data
+    // Ambil data kwarran berdasarkan kwarranId
     const kwarranResponse = await fetch(`${API_URL}kwarran/${kwarranId}`);
     const kwarranData = await kwarranResponse.json();
 
-    // Prepare the final data object
+    // Siapkan objek data akhir
     const finalData = {
       ...gudepData,
-      username: userData.username, // Add username
-      kwarran_nama: kwarranData.nama, // Add kwarran name
-      tahun_update: new Date(), // Set the current date as the last update time
-      jumlah_putra: gudepData.jumlah_putra || 0, // Ensure default value
-      jumlah_putri: gudepData.jumlah_putri || 0, // Ensure default value
+      username: userData.username, // Tambahkan username pengguna
+      kwarran_nama: kwarranData.nama, // Tambahkan nama kwarran
+      tahun_update: new Date(), // Set tanggal update saat ini
+      jumlah_putra: gudepData.jumlah_putra || 0, // Pastikan nilai default
+      jumlah_putri: gudepData.jumlah_putri || 0, // Pastikan nilai default
     };
 
-    return finalData;
+    return finalData; // Kembalikan data yang sudah diproses
   } catch (error) {
-    console.error("Error preparing Gugusdepan data:", error);
-    throw error;
+    console.error("Error preparing Gugusdepan data:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };

@@ -1,16 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchGugusdepan } from "../../../services/GugusdepanService";
 import { fetchKwarran } from "../../../services/KwarranService";
+import AdminHeader from "../../atoms/AdminHeader"; // Import standardized header
 import DetailCell from "../../atoms/DetailCell";
+import Dropdown from "../../atoms/Dropdown"; // Import Dropdown component
 import ErrorMessage from "../../atoms/ErrorMessage";
 import FormatDate from "../../atoms/FormatDate";
 import LoadingSpinner from "../../atoms/LoadingSpinner";
 import NoDataMessage from "../../atoms/NoDataMessage";
-import FilterHeader from "../../moleculs/FilterHeader"; // Import FilterHeader
 import TableR from "../../moleculs/TableR";
 import AdminTemplate from "../../templates/AdminTemplate";
 
 const AdminGugusdepan = () => {
+  // State untuk menyimpan query pencarian, data Gugusdepan, daftar Kwarran, dan filter
   const [searchQuery, setSearchQuery] = useState("");
   const [data, setData] = useState([]);
   const [kwarranList, setKwarranList] = useState([]);
@@ -19,6 +21,7 @@ const AdminGugusdepan = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Fungsi untuk mengambil data awal (Gugusdepan dan Kwarran)
   const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
@@ -30,19 +33,21 @@ const AdminGugusdepan = () => {
         Array.isArray(gugusdepanResult.data) ? gugusdepanResult.data : []
       );
       setKwarranList(kwarranResult.data || []);
-      setError(null);
+      setError(null); // Reset error jika berhasil
     } catch (err) {
-      setError("Gagal mengambil data.");
       console.error("Error fetching data:", err);
+      setError("Gagal mengambil data."); // Set pesan error
     } finally {
-      setLoading(false);
+      setLoading(false); // Set loading selesai
     }
   }, []);
 
+  // Panggil fetchInitialData saat komponen pertama kali dimount
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
 
+  // Header tabel untuk daftar Gugusdepan
   const headers = useMemo(
     () => [
       { key: "no", label: "No", width: "w-1/20" },
@@ -59,122 +64,127 @@ const AdminGugusdepan = () => {
     []
   );
 
-  const handleSearchChange = useCallback(
-    (e) => setSearchQuery(e.target.value),
-    []
-  );
-  const handleKwarranChange = useCallback(
-    (value) => setSelectedKwarran(value),
-    []
-  );
-  const handleTingkatanChange = useCallback(
-    (value) => setSelectedTingkatan(value),
-    []
-  );
+  // Fungsi untuk menangani perubahan input pencarian
+  const handleSearchChange = useCallback((e) => {
+    setSearchQuery(e.target.value);
+  }, []);
 
+  // Fungsi untuk menangani perubahan filter Kwarran
+  const handleKwarranChange = useCallback((value) => {
+    setSelectedKwarran(value);
+  }, []);
+
+  // Fungsi untuk menangani perubahan filter Tingkatan
+  const handleTingkatanChange = useCallback((value) => {
+    setSelectedTingkatan(value);
+  }, []);
+
+  // Filter data berdasarkan query pencarian, Kwarran, dan Tingkatan
   const filteredData = useMemo(() => {
-    return data
-      .filter((item) => {
-        const searchMatch =
-          (item.no_gudep ?? "")
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          (item.mabigus ?? "")
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          (item.pembina ?? "")
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          (item.pelatih ?? "")
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase());
+    const query = searchQuery.toLowerCase();
+    return (
+      data
+        ?.filter((item) => {
+          const searchMatch =
+            (item.no_gudep ?? "").toLowerCase().includes(query) ||
+            (item.mabigus ?? "").toLowerCase().includes(query) ||
+            (item.pembina ?? "").toLowerCase().includes(query) ||
+            (item.pelatih ?? "").toLowerCase().includes(query);
 
-        const kwarranMatch = selectedKwarran
-          ? kwarranList.find((k) => k.id === item.kwarran_id)?.nama ===
-            selectedKwarran
-          : true;
+          const kwarranMatch = selectedKwarran
+            ? kwarranList.find((k) => k.id === item.kwarran_id)?.nama ===
+              selectedKwarran
+            : true;
 
-        const tingkatanMatch = selectedTingkatan
-          ? item.tingkatan === selectedTingkatan
-          : true;
+          const tingkatanMatch = selectedTingkatan
+            ? item.tingkatan === selectedTingkatan
+            : true;
 
-        return (
-          searchMatch &&
-          kwarranMatch &&
-          tingkatanMatch &&
-          item.useres?.role !== "admin"
-        );
-      })
-      .map((item, index) => ({
-        ...item,
-        no: index + 1,
-        kwarran_nama:
-          kwarranList.find((k) => k.id === item.kwarran_id)?.nama || "-",
-        tahun_update: FormatDate(item.tahun_update),
-        jumlah: (
-          <DetailCell
-            title="Lihat"
-            details={[
-              { label: "Putra", value: item.jumlah_putra },
-              { label: "Putri", value: item.jumlah_putri },
-            ]}
-          />
-        ),
-        detail: (
-          <DetailCell
-            title="Lihat"
-            details={[
-              { label: "Mabigus", value: item.mabigus },
-              { label: "Pembina", value: item.pembina },
-              { label: "Pelatih", value: item.pelatih },
-            ]}
-          />
-        ),
-      }));
+          return (
+            searchMatch &&
+            kwarranMatch &&
+            tingkatanMatch &&
+            item.useres?.role !== "admin"
+          );
+        })
+        .map((item, index) => ({
+          ...item,
+          no: index + 1,
+          kwarran_nama:
+            kwarranList.find((k) => k.id === item.kwarran_id)?.nama || "-",
+          tahun_update: FormatDate(item.tahun_update),
+          jumlah: (
+            <DetailCell
+              title="Lihat"
+              details={[
+                { label: "Putra", value: item.jumlah_putra },
+                { label: "Putri", value: item.jumlah_putri },
+              ]}
+            />
+          ),
+          detail: (
+            <DetailCell
+              title="Lihat"
+              details={[
+                { label: "Mabigus", value: item.mabigus },
+                { label: "Pembina", value: item.pembina },
+                { label: "Pelatih", value: item.pelatih },
+              ]}
+            />
+          ),
+        })) || []
+    );
   }, [data, searchQuery, selectedKwarran, selectedTingkatan, kwarranList]);
+
+  const FilterDropdowns = (
+    <div className="hidden md:flex gap-2">
+      {" "}
+      {/* Hidden on mobile */}
+      <Dropdown
+        options={kwarranList.map((k) => ({ id: k.nama, nama: k.nama }))}
+        selected={selectedKwarran}
+        onChange={handleKwarranChange}
+        placeholder="Pilih Kwarran"
+      />
+      <Dropdown
+        options={[
+          { id: "Siaga", nama: "Siaga" },
+          { id: "Penggalang", nama: "Penggalang" },
+          { id: "Penegak/Pandega", nama: "Penegak/Pandega" },
+          { id: "Pandega", nama: "Pandega" },
+        ]}
+        selected={selectedTingkatan}
+        onChange={handleTingkatanChange}
+        placeholder="Pilih Tingkatan"
+      />
+    </div>
+  );
 
   return (
     <AdminTemplate>
-      <div className="ml-18 rounded-xl shadow-xl">
+      <div className="md:ml-18 rounded-xl shadow-xl mt-10 md:mt-0">
         <div className="p-4">
-          <FilterHeader
+          {/* Standardized Header */}
+          <AdminHeader
             title="Data Gugusdepan"
-            searchQuery={searchQuery}
+            showSearch={true}
+            searchValue={searchQuery}
             onSearchChange={handleSearchChange}
-            dropdowns={[
-              {
-                name: "kwarran",
-                options: kwarranList,
-                selected: selectedKwarran,
-                onChange: handleKwarranChange,
-                placeholder: "Kwarran",
-              },
-              {
-                name: "tingkatan",
-                options: [
-                  { id: "Siaga", nama: "Siaga" },
-                  { id: "Penggalang", nama: "Penggalang" },
-                  { id: "Penegak/Pandega", nama: "Penegak/Pandega" },
-                  { id: "Pandega", nama: "Pandega" },
-                ],
-                selected: selectedTingkatan,
-                onChange: handleTingkatanChange,
-                placeholder: "Tingkatan",
-              },
-            ]}
+            additionalControls={FilterDropdowns}
           />
 
-          <div className="mt-4">
-            {loading ? (
-              <LoadingSpinner />
-            ) : error ? (
-              <ErrorMessage message={error} />
-            ) : filteredData.length === 0 ? (
-              <NoDataMessage message="Data Gugusdepan tidak ditemukan." />
-            ) : (
+          {/* Content */}
+          {loading ? (
+            <LoadingSpinner />
+          ) : error ? (
+            <ErrorMessage message={error} />
+          ) : filteredData.length === 0 ? (
+            <NoDataMessage message="Data Gugusdepan tidak ditemukan." />
+          ) : (
+            <div className="mt-4 overflow-x-auto">
               <TableR headers={headers} data={filteredData} />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </AdminTemplate>

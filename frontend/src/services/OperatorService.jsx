@@ -9,7 +9,6 @@ export const fetchUserId = async (id) => {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
-    console.log(`Data dari API (fetchUserId dengan ID ${id}):`, data);
     return data;
   } catch (error) {
     console.error(`Error fetching user with ID ${id}:`, error);
@@ -20,8 +19,6 @@ export const fetchUserId = async (id) => {
 // Fungsi untuk mengedit data User
 export const editUser = async (id, userData) => {
   try {
-    console.log("Form data yang dikirim:", userData); // Debugging data
-
     // Penting: Gunakan JSON.stringify() untuk mengubah objek JavaScript ke JSON
     const response = await fetch(`${API_URL}user/${id}`, {
       method: "PUT",
@@ -35,7 +32,6 @@ export const editUser = async (id, userData) => {
     }
 
     const result = await response.json();
-    console.log("User profile updated:", result);
     return result;
   } catch (error) {
     console.error("Error updating user profile:", error);
@@ -82,8 +78,6 @@ export const fetchUsers = async () => {
 // Fungsi untuk membuat User baru
 export const createUser = async (userData) => {
   try {
-    console.log("Data user baru yang dikirim:", userData); // Debugging data
-
     const response = await fetch(`${API_URL}user`, {
       method: "POST",
       headers: {
@@ -99,7 +93,6 @@ export const createUser = async (userData) => {
     }
 
     const result = await response.json();
-    console.log("User created:", result);
     return result;
   } catch (error) {
     console.error("Error creating user:", error);
@@ -111,8 +104,6 @@ export const fetchProfile = async (userId) => {
   try {
     const response = await fetch(`${API_URL}user/${userId}`);
     const result = await response.json();
-
-    console.log("API Response:", result);
 
     if (!response.ok) {
       throw new Error(

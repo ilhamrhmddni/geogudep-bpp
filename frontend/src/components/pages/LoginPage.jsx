@@ -7,44 +7,41 @@ import PrimaryButton from "../atoms/PrimaryButton";
 import TextInput from "../atoms/TextInput";
 
 const LoginPage = () => {
+  // State untuk menyimpan data form dan status loading
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Efek untuk menghapus data jika token tidak ada
   useEffect(() => {
-    // Simple check for existing token - no need for complex validation on initial load
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!localStorage.getItem("token")) {
       localStorage.removeItem("data");
     }
   }, []);
 
+  // Fungsi untuk menangani perubahan input form
   const handleChange = ({ target: { name, value } }) =>
     setFormData((prev) => ({ ...prev, [name]: value }));
 
-  // Function to decode JWT token directly in this component
+  // Fungsi untuk decode JWT token
   const parseJwt = (token) => {
     try {
-      const base64Url = token.split(".")[1];
-      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-      const jsonPayload = decodeURIComponent(
-        window
-          .atob(base64)
-          .split("")
-          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-          .join("")
+      const payload = JSON.parse(
+        atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
       );
-      return JSON.parse(jsonPayload);
+      return payload;
     } catch (error) {
       console.error("Error parsing JWT:", error);
       return null;
     }
   };
 
+  // Fungsi untuk menangani submit form login
   const handleSubmit = async (e) => {
     e.preventDefault();
     const { username, password } = formData;
 
+    // Validasi input form
     if (!username.trim() || !password.trim()) {
       return Swal.fire({
         icon: "warning",
@@ -56,8 +53,10 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
+      // Panggil API login
       const response = await login(username, password);
 
+      // Validasi token dari response
       if (!response?.token) {
         return Swal.fire({
           icon: "error",
@@ -66,7 +65,7 @@ const LoginPage = () => {
         });
       }
 
-      // Parse the JWT token directly
+      // Decode token untuk mendapatkan data pengguna
       const tokenData = parseJwt(response.token);
 
       if (!tokenData) {
@@ -77,7 +76,6 @@ const LoginPage = () => {
         });
       }
 
-      // Extract user data from token
       const {
         username: decodedUsername,
         email,
@@ -86,7 +84,7 @@ const LoginPage = () => {
         redirectUrl,
       } = tokenData;
 
-      // Validate user role
+      // Validasi role pengguna
       if (!["admin", "operator"].includes(role)) {
         return Swal.fire({
           icon: "error",
@@ -95,13 +93,14 @@ const LoginPage = () => {
         });
       }
 
-      // Store token and user data in localStorage
+      // Simpan token dan data pengguna ke localStorage
       localStorage.setItem("token", response.token);
       localStorage.setItem(
         "data",
         JSON.stringify({ username: decodedUsername, email, role, gudep_id })
       );
 
+      // Tampilkan notifikasi sukses dan navigasi ke halaman dashboard
       await Swal.fire({
         icon: "success",
         title: "Login Berhasil",
@@ -125,26 +124,27 @@ const LoginPage = () => {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center bg-[#9500FF] bg-[length:60%] md:bg-[length:50%] bg-no-repeat bg-center"
+      className="min-h-screen flex flex-col items-center justify-center bg-[#9500FF] bg-[length:60%] md:bg-[length:50%] bg-no-repeat bg-center px-4"
       style={{ backgroundImage: "url('/bg-siluet.png')" }}
     >
-      <div className="w-full max-w-md flex flex-col space-y-8 my-8">
-        <div className="flex flex-col items-center">
-          <div className="w-24 h-24 bg-[url('/logo.png')] bg-contain bg-no-repeat bg-center" />
-          <h2 className="text-2xl font-bold text-center text-white">
+      <div className="w-full max-w-md flex flex-col space-y-6 md:space-y-8 my-8">
+        <div className="flex flex-col items-center text-center">
+          {/* Logo dan judul */}
+          <div className="w-20 h-20 md:w-24 md:h-24 bg-[url('/logo.png')] bg-contain bg-no-repeat bg-center" />
+          <h2 className="text-lg md:text-xl font-semibold text-white">
             Sistem Informasi Geografis <br /> Pegudep Balikpapan
           </h2>
         </div>
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col space-y-6 md:space-y-8"
+          className="flex flex-col space-y-5 md:space-y-6"
         >
-          {/* Username field */}
+          {/* Input username */}
           <div className="flex flex-col gap-2 items-center sm:items-stretch text-center">
             <FormLabel
               htmlFor="username"
               text="Username"
-              className="text-white font-medium"
+              className="text-white font-medium text-sm md:text-base"
             />
             <TextInput
               id="username"
@@ -154,15 +154,16 @@ const LoginPage = () => {
               onChange={handleChange}
               placeholder="Masukkan Username"
               required
+              className="w-full text-sm md:text-base"
             />
           </div>
 
-          {/* Password field */}
+          {/* Input password */}
           <div className="flex flex-col gap-2 items-center sm:items-stretch text-center">
             <FormLabel
               htmlFor="password"
               text="Password"
-              className="text-white font-medium"
+              className="text-white font-medium text-sm md:text-base"
             />
             <TextInput
               id="password"
@@ -172,19 +173,23 @@ const LoginPage = () => {
               onChange={handleChange}
               placeholder="Masukkan Password"
               required
+              className="w-full text-sm md:text-base"
             />
           </div>
 
+          {/* Tombol login */}
           <div className="flex flex-col items-center mt-4">
             <PrimaryButton
               text={loading ? "Loading..." : "Login"}
               type="submit"
               disabled={loading}
+              className="w-full text-sm md:text-base"
             />
           </div>
         </form>
+        {/* Tombol kembali ke dashboard */}
         <button
-          className="text-white text-lg cursor-pointer hover:font-semibold hover:text-white mt-4"
+          className="text-white text-sm md:text-base cursor-pointer hover:font-semibold hover:text-white mt-4"
           onClick={() => navigate("/")}
         >
           Kembali Ke Halaman Dashboard

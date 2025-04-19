@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import Swal from "sweetalert2"; // Import SweetAlert2
+import Swal from "sweetalert2"; // Import SweetAlert2 untuk notifikasi
 import {
   createEvent,
   editEvent,
@@ -9,6 +9,7 @@ import {
 import OperatorTemplate from "../../templates/OperatorTemplate";
 
 const OperatorEventForm = ({ isEdit }) => {
+  // State untuk menyimpan data form
   const [nama, setNama] = useState("");
   const [tanggalMulai, setTanggalMulai] = useState("");
   const [tanggalSelesai, setTanggalSelesai] = useState("");
@@ -16,8 +17,9 @@ const OperatorEventForm = ({ isEdit }) => {
   const [tingkat, setTingkat] = useState("");
   const [penyelenggara, setPenyelenggara] = useState("");
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams(); // Ambil ID dari parameter URL
 
+  // Ambil data event jika mode edit
   useEffect(() => {
     if (isEdit && id) {
       const fetchData = async () => {
@@ -43,32 +45,33 @@ const OperatorEventForm = ({ isEdit }) => {
     }
   }, [id, isEdit]);
 
+  // Fungsi untuk menangani submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate date logic
+    // Validasi logika tanggal
     if (new Date(tanggalMulai) > new Date(tanggalSelesai)) {
       await Swal.fire({
         icon: "error",
-        title: "Invalid Date Range",
+        title: "Tanggal Tidak Valid",
         text: "Tanggal Mulai tidak boleh lebih dari Tanggal Selesai.",
         confirmButtonText: "OK",
       });
-      return; // Stop form submission if dates are invalid
+      return; // Hentikan submit jika tanggal tidak valid
     }
 
-    // Use SweetAlert for confirmation
+    // Konfirmasi sebelum menyimpan data
     const confirmSubmit = await Swal.fire({
-      title: isEdit ? "Update Event" : "Add Event",
+      title: isEdit ? "Ubah Event" : "Tambah Event",
       text: isEdit
-        ? "Are you sure you want to update the event data?"
-        : "Are you sure you want to save this new event?",
+        ? "Apakah Anda yakin ingin mengubah data event ini?"
+        : "Apakah Anda yakin ingin menyimpan event baru ini?",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#3085d6",
       cancelButtonColor: "#d33",
-      confirmButtonText: isEdit ? "Yes, update it!" : "Yes, save!",
-      cancelButtonText: "Cancel",
+      confirmButtonText: isEdit ? "Ya, ubah!" : "Ya, simpan!",
+      cancelButtonText: "Batal",
     });
 
     if (confirmSubmit.isConfirmed) {
@@ -83,57 +86,57 @@ const OperatorEventForm = ({ isEdit }) => {
 
       try {
         if (isEdit && id) {
-          await editEvent(id, newData);
+          await editEvent(id, newData); // Panggil API untuk mengedit data
         } else {
-          await createEvent(newData);
+          await createEvent(newData); // Panggil API untuk membuat data baru
         }
 
-        // Show success message
+        // Tampilkan pesan sukses
         Swal.fire({
           icon: "success",
-          title: isEdit ? "Event Updated" : "Event Created",
+          title: isEdit ? "Event Diubah" : "Event Ditambahkan",
           text: isEdit
-            ? "The event has been updated successfully!"
-            : "The new event has been created!",
+            ? "Data event berhasil diubah!"
+            : "Event baru berhasil ditambahkan!",
           confirmButtonText: "OK",
         }).then(() => {
-          navigate("/operator/prestasi/add");
+          navigate("/operator/prestasi/add"); // Redirect ke halaman prestasi
         });
       } catch (error) {
         console.error("Error submitting form:", error);
-        // Show error message
+        // Tampilkan pesan error
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: "There was an issue submitting the form. Please try again.",
+          text: "Terjadi kesalahan saat menyimpan data. Silakan coba lagi.",
           confirmButtonText: "OK",
         });
       }
-    } else {
-      console.log("Form submission canceled.");
     }
   };
 
   return (
     <OperatorTemplate>
-      <div className="flex flex-col">
-        <div className="flex items-center p-4 m-auto w-full ml-20">
+      <div className="flex flex-col mt-20 md:mt-0">
+        {/* Header */}
+        <div className="flex items-center p-4 m-auto w-full md:ml-20">
           <div
-            className="flex items-center gap-4 font-bold text-xl px-4 py-2 bg-[#9500FF] rounded-md text-white cursor-pointer"
+            className="flex items-center gap-4 font-bold text-lg md:text-xl px-4 py-2 bg-[#9500FF] rounded-md text-white cursor-pointer"
             onClick={() => navigate(-1)}
           >
             <span className="material-icons text-white">arrow_back</span>
-            Kembali
+            <span className="hidden md:inline">Kembali</span>
           </div>
-
-          <h1 className="text-3xl font-bold flex-grow text-center mr-24 text-[#9500FF]">
-            {isEdit ? "Edit Event" : "Add Event"}
+          <h1 className="text-2xl md:text-3xl font-bold flex-grow text-center md:mr-24 text-[#9500FF] md:mt-4 mt-0">
+            {isEdit ? "Edit Event" : "Tambah Event"}
           </h1>
         </div>
 
+        {/* Form */}
         <div className="flex flex-auto items-center justify-center">
-          <div className="p-8 bg-white rounded-lg shadow-xl text-left w-full mx-4 ml-24">
+          <div className="p-4 md:p-8 bg-white rounded-lg shadow-xl text-left w-full mx-4 md:ml-24">
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Input Nama Event */}
               <div className="flex flex-col">
                 <label className="mb-1 font-semibold text-purple-600">
                   Nama Event
@@ -146,6 +149,8 @@ const OperatorEventForm = ({ isEdit }) => {
                   required
                 />
               </div>
+
+              {/* Input Tanggal Mulai */}
               <div className="flex flex-col">
                 <label className="mb-1 font-semibold text-purple-600">
                   Tanggal Mulai
@@ -158,6 +163,8 @@ const OperatorEventForm = ({ isEdit }) => {
                   required
                 />
               </div>
+
+              {/* Input Tanggal Selesai */}
               <div className="flex flex-col">
                 <label className="mb-1 font-semibold text-purple-600">
                   Tanggal Selesai
@@ -170,6 +177,8 @@ const OperatorEventForm = ({ isEdit }) => {
                   required
                 />
               </div>
+
+              {/* Input Tempat */}
               <div className="flex flex-col">
                 <label className="mb-1 font-semibold text-purple-600">
                   Tempat
@@ -182,6 +191,8 @@ const OperatorEventForm = ({ isEdit }) => {
                   required
                 />
               </div>
+
+              {/* Input Tingkat */}
               <div className="flex flex-col">
                 <label className="mb-1 font-semibold text-purple-600">
                   Tingkat
@@ -202,6 +213,8 @@ const OperatorEventForm = ({ isEdit }) => {
                   <option value="Internasional">Internasional</option>
                 </select>
               </div>
+
+              {/* Input Penyelenggara */}
               <div className="flex flex-col">
                 <label className="mb-1 font-semibold text-purple-600">
                   Penyelenggara
@@ -214,9 +227,11 @@ const OperatorEventForm = ({ isEdit }) => {
                   required
                 />
               </div>
+
+              {/* Tombol Submit */}
               <button
                 type="submit"
-                className="w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md hover:bg-[#9500FF] transition duration-200"
+                className="w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md hover:bg-[#7a00cc] transition duration-200"
               >
                 {isEdit ? "Ubah" : "Simpan"}
               </button>

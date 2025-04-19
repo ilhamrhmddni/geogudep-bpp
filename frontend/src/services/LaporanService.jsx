@@ -3,20 +3,19 @@
 // URL dasar API
 const API_URL = "http://localhost:3000/";
 
-// Fungsi untuk mengambil data laporan
+// Fungsi untuk mengambil semua data laporan
 export const fetchLaporan = async () => {
   try {
     const response = await fetch(`${API_URL}laporan`);
 
     if (!response.ok) {
-      throw new Error("Failed to fetch Laporan data");
+      throw new Error("Gagal mengambil data laporan");
     }
 
-    const data = await response.json();
-    return data;
+    return await response.json(); // Mengembalikan data dalam format JSON
   } catch (error) {
-    console.error("Error fetching Laporan:", error);
-    throw error;
+    console.error("Error fetching Laporan:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };
 
@@ -26,59 +25,61 @@ export const fetchLaporanById = async (id) => {
     const response = await fetch(`${API_URL}laporan/${id}`);
 
     if (!response.ok) {
-      throw new Error("Failed to fetch Laporan data");
+      throw new Error("Gagal mengambil data laporan berdasarkan ID");
     }
 
-    const data = await response.json();
-    return data;
+    return await response.json(); // Mengembalikan data dalam format JSON
   } catch (error) {
-    console.error("Error fetching Laporan by ID:", error);
-    throw error;
+    console.error("Error fetching Laporan by ID:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };
 
-// Fungsi untuk membuat data laporan
+// Fungsi untuk membuat data laporan baru
 export const createLaporan = async (data) => {
   try {
     const response = await fetch(`${API_URL}laporan`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json", // Header untuk JSON
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(data), // Kirim data dalam format JSON
     });
 
     if (!response.ok) {
-      throw new Error("Failed to create Laporan");
+      throw new Error("Gagal membuat data laporan");
     }
 
-    return await response.json();
+    return await response.json(); // Mengembalikan data hasil dari server
   } catch (error) {
-    console.error("Error creating Laporan:", error);
-    throw error;
+    console.error("Error creating Laporan:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };
 
-// Fungsi untuk mengedit data laporan
+// Fungsi untuk mengedit status laporan menjadi "selesai"
 export const editLaporan = async (id) => {
-  const response = await fetch(`${API_URL}laporan/${id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ status: "selesai" }), // Mengubah status menjadi "selesai"
-  });
+  try {
+    const response = await fetch(`${API_URL}laporan/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json", // Header untuk JSON
+      },
+      body: JSON.stringify({ status: "selesai" }), // Ubah status menjadi "selesai"
+    });
 
-  if (!response.ok) {
-    throw new Error("Failed to update Laporan status");
+    if (!response.ok) {
+      throw new Error("Gagal mengubah status laporan");
+    }
+
+    return await response.json(); // Mengembalikan data hasil update dari server
+  } catch (error) {
+    console.error("Error editing Laporan:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
-
-  const result = await response.json();
-  console.log(result);
-  return result;
 };
 
-// Fungsi untuk menghapus data laporan
+// Fungsi untuk menghapus data laporan berdasarkan ID
 export const deleteLaporan = async (id) => {
   try {
     const response = await fetch(`${API_URL}laporan/${id}`, {
@@ -86,13 +87,12 @@ export const deleteLaporan = async (id) => {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to delete Laporan");
+      throw new Error("Gagal menghapus data laporan");
     }
 
-    const result = await response.json();
-    return result;
+    return await response.json(); // Mengembalikan respon sukses dari server
   } catch (error) {
-    console.error("Error deleting Laporan:", error);
-    throw error;
+    console.error("Error deleting Laporan:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };

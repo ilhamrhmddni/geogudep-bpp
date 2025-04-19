@@ -1,58 +1,40 @@
 import React, { useState } from "react";
-import SidebarMenuUser from "../organisms/SidebarMenuUser"; // Mengimpor Sidebar
+import { useLocation } from "react-router-dom";
+import SidebarMenuUser from "../organisms/SidebarMenuUser";
 
 const UserTemplate = ({ children }) => {
-  // Ambil langsung dari localStorage saat inisialisasi state
-  const initialOpen = localStorage.getItem("sidebarOpen") === "true";
-  const [isOpen, setIsOpen] = useState(initialOpen);
+  const [isOpen, setIsOpen] = useState(
+    localStorage.getItem("sidebarOpen") === "true"
+  );
+  const location = useLocation();
 
   const toggleMenu = () => {
     const newValue = !isOpen;
     setIsOpen(newValue);
-    localStorage.setItem("sidebarOpen", newValue.toString());
+    localStorage.setItem("sidebarOpen", newValue);
   };
 
-  // Array menu dengan ikon
   const menuItems = [
-    {
-      name: "Dashboard",
-      icon: "home", // Nama ikon dari Google Icons
-      path: "/",
-    },
-    {
-      name: "Data Gugus Depan",
-      icon: "map", // Nama ikon dari Google Icons
-      path: "/gugusdepan",
-    },
-    {
-      name: "Form Laporan",
-      icon: "star", // Nama ikon dari Google Icons
-      path: "/laporan",
-    },
+    { name: "Dashboard", icon: "home", path: "/" },
+    { name: "Data Gugus Depan", icon: "map", path: "/gugusdepan" },
+    { name: "Form Laporan", icon: "star", path: "/laporan" },
   ];
 
-  // Mendapatkan path saat ini
-  const currentPath = window.location.pathname;
-
   return (
-    <div className="h-screen flex">
-      {/* Sidebar Menu */}
+    <div className="h-screen flex flex-col md:flex-row">
+      {/* SidebarMenuUser menerima props untuk status dan fungsi toggle */}
       <SidebarMenuUser
         isOpen={isOpen}
         toggleMenu={toggleMenu}
         menuItems={menuItems}
-        currentPath={currentPath}
+        currentPath={location.pathname}
       />
-      {/* Konten utama */}
       <div
         className={`transition-all duration-300 w-full ${
-          isOpen ? "ml-[210px]" : "ml-0"
+          isOpen ? "md:ml-[210px]" : ""
         }`}
-        style={{
-          transition: "margin-left 0.3s ease",
-        }}
       >
-        {/* Konten halaman utama */}
+        {/* Konten utama halaman */}
         <div className="p-4">{children}</div>
       </div>
     </div>

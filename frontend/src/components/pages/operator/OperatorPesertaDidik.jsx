@@ -2,8 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
-import ListHeader from "../../moleculs/ListHeader"; // Import ListHeader
-import TableCRUD from "../../moleculs/TableCRUD";
+import TableCRUD from "../../moleculs/TableCRUD"; // Komponen tabel CRUD
 import OperatorTemplate from "../../templates/OperatorTemplate";
 
 import {
@@ -18,14 +17,16 @@ import { decodeToken } from "../../../utils/jwt";
 
 const OperatorPesertaDidik = () => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState(""); // State untuk pencarian
+  const [data, setData] = useState([]); // State untuk data peserta didik
+  const [loading, setLoading] = useState(true); // State untuk status loading
+  const [error, setError] = useState(null); // State untuk pesan error
 
+  // Decode token untuk mendapatkan gudep_id
   const tokenData = decodeToken();
   const gudepId = tokenData?.gudep_id;
 
+  // Fungsi untuk mengambil data peserta didik dari API
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -41,10 +42,12 @@ const OperatorPesertaDidik = () => {
     }
   }, [gudepId]);
 
+  // Panggil fetchData saat komponen pertama kali dimuat
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  // Header untuk tabel
   const headers = useMemo(
     () => [
       { key: "no", label: "No", width: "w-1/12" },
@@ -57,11 +60,13 @@ const OperatorPesertaDidik = () => {
     []
   );
 
+  // Fungsi untuk menangani perubahan input pencarian
   const handleSearchChange = useCallback(
     (e) => setSearchQuery(e.target.value),
     []
   );
 
+  // Fungsi untuk navigasi ke halaman edit peserta didik
   const handleEdit = useCallback(
     (item) => {
       navigate(`/operator/pesertadidik/edit/${item.id}`);
@@ -69,6 +74,7 @@ const OperatorPesertaDidik = () => {
     [navigate]
   );
 
+  // Fungsi untuk menghapus data peserta didik
   const handleDelete = useCallback(
     async (id) => {
       const confirmDelete = await Swal.fire({
@@ -86,9 +92,10 @@ const OperatorPesertaDidik = () => {
           const peserta = data.find((item) => item.id === id);
           const gender = peserta?.gender;
 
-          await deletePesertadidik(id);
+          await deletePesertadidik(id); // Panggil API untuk menghapus data
           Swal.fire("Berhasil!", "Data berhasil dihapus.", "success");
 
+          // Update jumlah putra/putri di gugusdepan
           const gugusData = await fetchGugusdepanId(gudepId);
           await editGugusdepan(gudepId, {
             jumlah_putra:
@@ -111,6 +118,7 @@ const OperatorPesertaDidik = () => {
     [data, fetchData, gudepId]
   );
 
+  // Filter data berdasarkan query pencarian
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase();
     return data
@@ -126,6 +134,7 @@ const OperatorPesertaDidik = () => {
       });
   }, [data, searchQuery]);
 
+  // Aksi untuk setiap baris tabel
   const rowActions = useMemo(
     () => [
       {
@@ -143,6 +152,7 @@ const OperatorPesertaDidik = () => {
     [handleDelete, handleEdit]
   );
 
+  // Transformasi data untuk ditampilkan di tabel
   const transformedData = useMemo(() => {
     return filteredData.map((item, index) => ({
       no: index + 1,
@@ -156,29 +166,43 @@ const OperatorPesertaDidik = () => {
 
   return (
     <OperatorTemplate>
-      <div className="ml-18 rounded-xl shadow-xl">
+      <div className="md:ml-18 rounded-xl shadow-xl mt-20 md:mt-0">
         <div className="p-4">
-          <ListHeader
-            title="Data Peserta Didik"
-            searchQuery={searchQuery}
-            setSearchQuery={handleSearchChange}
-            addButtonLabel="Tambah Peserta Didik"
-            addButtonRoute="/operator/pesertadidik/add"
-          />
+          {/* Header */}
+          <div className="flex bg-[#9500FF] rounded-2xl mx-2 px-2">
+            <span
+              className="items-center md:text-2xl text-xl font-bold md:px-12 m-auto flex justify-center text-white"
+              style={{ whiteSpace: "nowrap" }}
+            >
+              Data Peserta Didik
+            </span>
+            <div className="flex gap-2 px-4 py-2">
+              <button
+                onClick={() => navigate("/operator/pesertadidik/add")}
+                className="bg-white text-[#9500FF] md:px-4 px-3 py-2 rounded-2xl border-2 border-[#9500FF] cursor-pointer font-bold flex gap-2"
+              >
+                <span className="material-icons">add</span>
+                <div className="hidden md:block">Tambah Peserta Didik</div>
+              </button>
+            </div>
+          </div>
 
+          {/* Loading, Error, or Table */}
           {loading && <p className="text-center mt-4">Memuat data...</p>}
           {error && <p className="text-center mt-4 text-red-500">{error}</p>}
 
           {!loading && filteredData.length === 0 ? (
-            <p className="text-center mt-4 ">Data tidak ditemukan.</p>
+            <p className="text-center mt-4">Data tidak ditemukan.</p>
           ) : (
-            <TableCRUD
-              headers={headers}
-              data={transformedData}
-              rowActions={rowActions}
-              onEdit={handleEdit} // Pastikan ini juga diteruskan jika TableCRUD membutuhkannya secara terpisah
-              onDelete={handleDelete} // Pastikan ini juga diteruskan jika TableCRUD membutuhkannya secara terpisah
-            />
+            <div className="mt-4 overflow-x-auto">
+              <TableCRUD
+                headers={headers}
+                data={transformedData}
+                rowActions={rowActions}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            </div>
           )}
         </div>
       </div>

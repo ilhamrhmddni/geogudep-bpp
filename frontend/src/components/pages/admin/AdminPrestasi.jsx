@@ -3,18 +3,20 @@ import { fetchEventGudeps } from "../../../services/PrestasiService";
 import ErrorMessage from "../../atoms/ErrorMessage";
 import LoadingSpinner from "../../atoms/LoadingSpinner";
 import NoDataMessage from "../../atoms/NoDataMessage";
-import FilterHeader from "../../moleculs/FilterHeader"; // Import FilterHeader
-import TableR from "../../moleculs/TableR";
+import TableR from "../../moleculs/TableR"; // Komponen tabel
 import AdminTemplate from "../../templates/AdminTemplate";
+import AdminHeader from "../../atoms/AdminHeader"; // Import standardized header
 
 const AdminPrestasi = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTingkatan, setSelectedTingkatan] = useState("");
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedGudep, setSelectedGudep] = useState("");
+  // State untuk menyimpan data dan filter
+  const [searchQuery, setSearchQuery] = useState(""); // Query pencarian
+  const [selectedTingkatan, setSelectedTingkatan] = useState(""); // Filter tingkatan
+  const [selectedGudep, setSelectedGudep] = useState(""); // Filter Gudep
+  const [data, setData] = useState([]); // Data prestasi
+  const [loading, setLoading] = useState(true); // Status loading
+  const [error, setError] = useState(null); // Pesan error
 
+  // Fungsi untuk mengambil data prestasi dari API
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -29,20 +31,27 @@ const AdminPrestasi = () => {
     }
   }, []);
 
+  // Panggil fetchData saat komponen pertama kali dimuat
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const handleSearchChange = useCallback(
-    (e) => setSearchQuery(e.target.value),
-    []
-  );
-  const handleTingkatanChange = useCallback(
-    (value) => setSelectedTingkatan(value),
-    []
-  );
-  const handleGudepChange = useCallback((value) => setSelectedGudep(value), []);
+  // Fungsi untuk menangani perubahan input pencarian
+  const handleSearchChange = useCallback((e) => {
+    setSearchQuery(e.target.value);
+  }, []);
 
+  // Fungsi untuk menangani perubahan filter tingkatan
+  const handleTingkatanChange = useCallback((value) => {
+    setSelectedTingkatan(value);
+  }, []);
+
+  // Fungsi untuk menangani perubahan filter Gudep
+  const handleGudepChange = useCallback((value) => {
+    setSelectedGudep(value);
+  }, []);
+
+  // Filter data berdasarkan query pencarian dan filter
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase();
     return data.filter((item) => {
@@ -62,6 +71,7 @@ const AdminPrestasi = () => {
     });
   }, [data, searchQuery, selectedTingkatan, selectedGudep]);
 
+  // Transformasi data untuk ditampilkan di tabel
   const transformedData = useMemo(() => {
     return filteredData.map((item, index) => ({
       no: index + 1,
@@ -72,12 +82,14 @@ const AdminPrestasi = () => {
     }));
   }, [filteredData]);
 
+  // Opsi untuk dropdown filter Gudep
   const gudepOptions = useMemo(() => {
     return [...new Set(data.map((item) => item.gudepes?.no_gudep))]
       .filter(Boolean)
       .map((gudep) => ({ id: gudep, nama: gudep })); // Format untuk FilterHeader
   }, [data]);
 
+  // Opsi untuk dropdown filter Tingkatan
   const tingkatanOptions = useMemo(
     () => [
       { id: "Siaga", nama: "Siaga" },
@@ -88,50 +100,54 @@ const AdminPrestasi = () => {
     []
   );
 
+  // Header untuk tabel
   const headers = useMemo(
     () => [
-      { key: "no", label: "No", width: "w-1/20" },
-      { key: "no_gudep", label: "No. Gudep", width: "w-2/20" },
-      { key: "tingkatan", label: "Tingkatan", width: "w-2/20" },
-      { key: "nama_event", label: "Nama Event", width: "w-4/20" },
-      { key: "keterangan", label: "Keterangan", width: "w-8/20" },
+      { key: "no", label: "No", width: "w-1/12" },
+      { key: "no_gudep", label: "No. Gudep", width: "w-2/12" },
+      { key: "tingkatan", label: "Tingkatan", width: "w-2/12" },
+      { key: "nama_event", label: "Nama Event", width: "w-3/12" },
+      { key: "keterangan", label: "Keterangan", width: "w-4/12" },
     ],
     []
   );
 
   return (
     <AdminTemplate>
-      <div className="ml-18 rounded-xl shadow-xl">
+      <div className="md:ml-18 rounded-xl shadow-xl mt-10 md:mt-0">
         <div className="p-4">
-          <FilterHeader
+          {/* Standardized Header */}
+          <AdminHeader
             title="Data Prestasi"
-            searchQuery={searchQuery}
+            showSearch={true}
+            searchValue={searchQuery}
             onSearchChange={handleSearchChange}
             dropdowns={[
               {
-                name: "gudep",
+                name: "Gudep",
                 options: gudepOptions,
                 selected: selectedGudep,
                 onChange: handleGudepChange,
-                placeholder: "Gudep",
+                placeholder: "Pilih Gudep",
               },
               {
-                name: "tingkatan",
+                name: "Tingkatan",
                 options: tingkatanOptions,
                 selected: selectedTingkatan,
                 onChange: handleTingkatanChange,
-                placeholder: "Tingkatan",
+                placeholder: "Pilih Tingkatan",
               },
             ]}
           />
 
-          <div className="mt-4">
+          {/* Content */}
+          <div className="mt-6 overflow-x-auto">
             {loading ? (
               <LoadingSpinner />
             ) : error ? (
               <ErrorMessage message={error} />
             ) : transformedData.length === 0 ? (
-              <NoDataMessage message="Data tidak ditemukan" />
+              <NoDataMessage message="Data Prestasi tidak ditemukan." />
             ) : (
               <TableR headers={headers} data={transformedData} />
             )}

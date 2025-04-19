@@ -11,7 +11,7 @@ import { fetchKwarran } from "../../../services/KwarranService";
 import HeaderUser from "../../organisms/HeaderUser";
 import UserTemplate from "../../templates/UserTemplate";
 
-// Fix for marker icon not displaying
+// Fix untuk menampilkan marker icon di Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -19,6 +19,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+// Komponen untuk toggle ukuran peta (fullscreen atau tidak)
 const ToggleMapSize = ({ isFullScreen, setIsFullScreen }) => {
   const map = useMap();
 
@@ -26,15 +27,14 @@ const ToggleMapSize = ({ isFullScreen, setIsFullScreen }) => {
     const mapContainer = map.getContainer();
     mapContainer.classList.toggle("full-screen-map");
     setIsFullScreen((prev) => !prev);
+    map.invalidateSize(); // Pastikan peta merespons perubahan ukuran
   };
 
   return (
     <button
       onClick={toggleFullScreen}
-      className="absolute top-2 right-2 bg-[#9500FF] text-white font-bold py-2 px-4 rounded cursor-pointer z-50 opacity-100"
-      style={{
-        zIndex: 1000, // Ensure high z-index
-      }}
+      className="absolute top-2 right-2 bg-[#9500FF] text-white font-bold py-2 px-4 rounded cursor-pointer z-50"
+      style={{ zIndex: 1000 }}
     >
       {isFullScreen ? (
         <span className="material-icons">fullscreen_exit</span>
@@ -45,21 +45,17 @@ const ToggleMapSize = ({ isFullScreen, setIsFullScreen }) => {
   );
 };
 
+// Komponen untuk memindahkan peta ke lokasi pengguna
 const FlyToUserLocation = () => {
   const map = useMap();
   const [userLocation, setUserLocation] = useState(null);
-  const [locationFound, setLocationFound] = useState(false);
 
   useEffect(() => {
     map.locate({ setView: false, maxZoom: 15 });
 
     const handleLocationFound = (e) => {
       setUserLocation(e.latlng);
-      setLocationFound(true);
-      // Fly to user location with zoom animation when location is found
-      map.flyTo(e.latlng, 13, {
-        duration: 5, // Animation duration in seconds
-      });
+      map.flyTo(e.latlng, 13, { duration: 3 });
     };
 
     map.on("locationfound", handleLocationFound);
@@ -68,14 +64,6 @@ const FlyToUserLocation = () => {
       map.off("locationfound", handleLocationFound);
     };
   }, [map]);
-
-  useEffect(() => {
-    if (locationFound && userLocation) {
-      map.flyTo(userLocation, 13, {
-        duration: 3, // Animation duration in seconds
-      });
-    }
-  }, [map, userLocation, locationFound]);
 
   return null;
 };
@@ -89,6 +77,7 @@ const UserGugusdepan = () => {
   const [selectedGugusdepan, setSelectedGugusdepan] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
+  // Mengambil data geografis, gugusdepan, dan kwarran secara paralel
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -98,11 +87,9 @@ const UserGugusdepan = () => {
           fetchGugusdepan(),
           fetchKwarran(),
         ]);
-        setTimeout;
         setGeografisData(geoResult.data || []);
         setGugusdepanData(gudepResult.data || []);
         setKwarranData(kwarranResult.data || []);
-        setLoading(false);
       } catch (error) {
         setError("Error fetching data.");
         console.error("Error fetching data:", error);
@@ -113,10 +100,11 @@ const UserGugusdepan = () => {
     fetchData();
   }, []);
 
-  // Set initial zoom level to be very far
+  // Posisi default peta
   const defaultPosition = [-1.2550458, 116.8878243];
-  const initialZoom = 5; // Adjust this value as needed
+  const initialZoom = 5;
 
+  // Fungsi untuk menentukan warna marker berdasarkan tingkatan
   const getMarkerColor = (tingkatan) => {
     switch (tingkatan?.toLowerCase()) {
       case "siaga":
@@ -128,10 +116,11 @@ const UserGugusdepan = () => {
       case "pandega":
         return "black";
       default:
-        return "blue"; // Warna default jika tingkatan tidak sesuai
+        return "blue";
     }
   };
 
+  // Fungsi untuk membuat custom icon marker
   const createCustomIcon = (color) => {
     return L.icon({
       iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
@@ -147,16 +136,14 @@ const UserGugusdepan = () => {
   return (
     <UserTemplate>
       <HeaderUser />
-      <div className={`ml-18 rounded-xl shadow-xl ${isFullScreen ? "" : ""}`}>
+      <div className={`md:ml-18 rounded-xl shadow-xl `}>
         <div className="p-4">
           <MapContainer
             center={defaultPosition}
-            zoom={initialZoom} // Use the initial zoom level
+            zoom={initialZoom}
             style={{
-              height: isFullScreen ? "80vh" : "400px",
-              width: "100%",
-              position: "relative",
-              overflow: "hidden",
+              height: isFullScreen ? "100vh" : "400px", // Pastikan tinggi 100% layar
+              width: isFullScreen ? "100vw" : "100%", // Pastikan lebar 100% layar
             }}
             className={`my-4 rounded-xl leaflet-container ${
               isFullScreen ? "full-screen-map" : ""
@@ -167,18 +154,14 @@ const UserGugusdepan = () => {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             />
-            {loading}
             {loading && (
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 bg-white bg-opacity-70 rounded-lg shadow-lg p-6">
                 <p className="text-lg font-semibold text-gray-700">
                   Memuat data...
                 </p>
-                {/* Anda bisa menambahkan indikator loading yang lebih menarik di sini */}
               </div>
             )}
             {!loading &&
-              geografisData.length > 0 &&
-              gugusdepanData.length > 0 &&
               geografisData.map((geo) => {
                 const matchedGudep = gugusdepanData.find(
                   (gudep) => gudep.id === geo.gudep_id
@@ -196,10 +179,7 @@ const UserGugusdepan = () => {
                       position={[lat, lng]}
                       icon={customIcon}
                       eventHandlers={{
-                        click: (e) => {
-                          e.originalEvent.stopPropagation();
-                          setSelectedGugusdepan(matchedGudep);
-                        },
+                        click: () => setSelectedGugusdepan(matchedGudep),
                       }}
                     >
                       <Popup>
@@ -223,19 +203,8 @@ const UserGugusdepan = () => {
             <FlyToUserLocation />
           </MapContainer>
 
-          {!isFullScreen && !selectedGugusdepan && !loading && (
+          {!isFullScreen && selectedGugusdepan && (
             <div className="my-4 space-y-4 px-4">
-              <p className="text-center text-gray-600">
-                Pilih gugus depan pada peta untuk melihat detail.
-              </p>
-            </div>
-          )}
-
-          {!isFullScreen && selectedGugusdepan && !loading && (
-            <div
-              className="my-4 space-y-4 px-4"
-              onClick={(e) => e.stopPropagation()}
-            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
@@ -405,7 +374,7 @@ const UserGugusdepan = () => {
         {`
           .leaflet-container {
             width: 100%;
-            height: 100%; /* Ensure it fills its parent initially */
+            height: 100%;
           }
           .full-screen-map {
             position: fixed !important;
@@ -413,9 +382,12 @@ const UserGugusdepan = () => {
             left: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
-            z-index: 1000 !important; /* Ensure it's on top of other elements */
-            margin: 0 !important; /* Reset any potential margins */
-            padding: 0 !important; /* Reset any potential paddings */
+            z-index: 1000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          body.fullscreen-active {
+            overflow: hidden; /* Hilangkan scroll saat fullscreen */
           }
         `}
       </style>

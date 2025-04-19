@@ -9,15 +9,14 @@ export const fetchEvents = async () => {
     const response = await fetch(`${API_URL}event`);
 
     if (!response.ok) {
-      throw new Error("Failed to fetch Event data");
+      throw new Error("Gagal mengambil data Event");
     }
 
     const data = await response.json(); // Mengambil data dalam bentuk JSON
-    console.log(data);
-    return data;
+    return data; // Mengembalikan data yang diterima dari server
   } catch (error) {
-    console.error("Error fetching Events:", error);
-    throw error;
+    console.error("Error fetching Events:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };
 
@@ -27,63 +26,62 @@ export const fetchEventById = async (id) => {
     const response = await fetch(`${API_URL}event/${id}`);
 
     if (!response.ok) {
-      throw new Error("Failed to fetch Event data");
+      throw new Error("Gagal mengambil data Event berdasarkan ID");
     }
 
-    const data = await response.json();
-    return data; // Pastikan data yang dikembalikan sesuai dengan struktur yang diharapkan
+    const data = await response.json(); // Mengambil data dalam bentuk JSON
+    return data; // Mengembalikan data yang diterima dari server
   } catch (error) {
-    console.error("Error fetching Event by ID:", error);
-    throw error;
+    console.error("Error fetching Event by ID:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };
 
-// Fungsi untuk membuat data event
+// Fungsi untuk membuat data event baru
 export const createEvent = async (data) => {
   try {
     const response = await fetch(`${API_URL}event`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json", // Header untuk JSON
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(data), // Kirim data dalam format JSON
     });
 
     if (!response.ok) {
-      throw new Error("Failed to create Event");
+      throw new Error("Gagal membuat Event baru");
     }
 
-    return await response.json();
+    return await response.json(); // Mengembalikan data hasil dari server
   } catch (error) {
-    console.error("Error creating Event:", error);
-    throw error;
+    console.error("Error creating Event:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };
 
-// Fungsi untuk mengedit data event
+// Fungsi untuk mengedit data event berdasarkan ID
 export const editEvent = async (id, item) => {
   try {
     const response = await fetch(`${API_URL}event/${id}`, {
       method: "PUT",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json", // Header untuk JSON
       },
-      body: JSON.stringify(item),
+      body: JSON.stringify(item), // Kirim data yang akan diupdate
     });
 
     if (!response.ok) {
-      throw new Error("Failed to edit Event");
+      throw new Error("Gagal mengedit Event");
     }
 
-    const updatedItem = await response.json();
-    return updatedItem;
+    return await response.json(); // Mengembalikan data hasil update dari server
   } catch (error) {
-    console.error("Error editing Event:", error);
-    throw error;
+    console.error("Error editing Event:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };
 
-// Fungsi untuk menghapus data event
+// Fungsi untuk menghapus data event berdasarkan ID
 export const deleteEvent = async (id) => {
   try {
     const response = await fetch(`${API_URL}event/${id}`, {
@@ -91,13 +89,12 @@ export const deleteEvent = async (id) => {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to delete Event");
+      throw new Error("Gagal menghapus Event");
     }
 
-    const result = await response.json(); // Mendapatkan respon sukses dari server
-    return result;
+    return await response.json(); // Mengembalikan respon sukses dari server
   } catch (error) {
-    console.error("Error deleting Event:", error);
-    throw error;
+    console.error("Error deleting Event:", error); // Log error jika terjadi
+    throw error; // Lempar error agar bisa ditangani di komponen pemanggil
   }
 };

@@ -12,9 +12,6 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     const decoded = jwtDecode(token);
     const userRole = decoded.role;
 
-    console.log("Token Role:", userRole);
-    console.log("Allowed:", allowedRoles);
-
     // Biar bisa menerima string atau array
     const allowed = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
 

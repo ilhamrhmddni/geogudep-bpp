@@ -1,24 +1,35 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Swal from "sweetalert2"; // Import SweetAlert2
+import Swal from "sweetalert2"; // Import SweetAlert2 untuk notifikasi
 import { createLaporan } from "../../../services/LaporanService";
 import HeaderUser from "../../organisms/HeaderUser";
 import UserTemplate from "../../templates/UserTemplate";
 
 const UserLaporan = () => {
-  const [nama, setNama] = useState("");
-  const [asal, setAsal] = useState("");
-  const [noHp, setNoHp] = useState("");
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  // State untuk menyimpan data form
+  const [formData, setFormData] = useState({
+    nama: "",
+    asal: "",
+    noHp: "",
+    email: "",
+  });
+  const [loading, setLoading] = useState(false); // State untuk status loading
+  const [error, setError] = useState(null); // State untuk pesan error
   const navigate = useNavigate();
 
+  // Fungsi untuk menangani perubahan input form
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Fungsi untuk menangani submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
+    // Konfirmasi sebelum menyimpan data
     const confirmSubmit = await Swal.fire({
       title: "Simpan Laporan Baru",
       text: "Apakah kamu yakin ingin menyimpan laporan baru ini?",
@@ -31,24 +42,14 @@ const UserLaporan = () => {
     });
 
     if (!confirmSubmit.isConfirmed) {
-      console.log("Form submission canceled.");
       setLoading(false);
       return;
     }
 
-    const newData = {
-      nama,
-      asal,
-      no_hp: noHp,
-      email,
-    };
-
     try {
-      await createLaporan(newData);
+      await createLaporan(formData); // Panggil API untuk menyimpan data
       Swal.fire("Sukses!", "Laporan baru telah disimpan.", "success").then(
-        () => {
-          navigate("/laporan"); // Adjust the redirect path as needed
-        }
+        () => navigate("/laporan") // Redirect ke halaman laporan
       );
     } catch (err) {
       console.error("Error submitting form:", err);
@@ -67,14 +68,15 @@ const UserLaporan = () => {
     <UserTemplate>
       <HeaderUser />
       <div className="flex flex-col mt-8">
-        <div className="flex items-center p-4 m-auto w-full ml-20">
-          <h1 className="text-3xl font-bold flex-grow text-center mr-24 text-[#9500FF]">
+        <div className="flex items-center p-4 m-auto w-full md:ml-20">
+          <h1 className="text-3xl font-bold flex-grow text-center text-[#9500FF]">
             Tambah Data Laporan
           </h1>
         </div>
 
         <div className="flex flex-auto items-center justify-center">
-          <div className="p-8 bg-white rounded-lg shadow-xl text-left w-full mx-4 ml-24">
+          <div className="p-8 bg-white rounded-lg shadow-xl text-left w-full mx-4 md:ml-24">
+            {/* Tampilkan pesan error jika ada */}
             {error && (
               <div
                 className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
@@ -85,6 +87,7 @@ const UserLaporan = () => {
               </div>
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Input Nama */}
               <div className="flex flex-col">
                 <label htmlFor="nama" className="mb-1 font-bold text-[#9500FF]">
                   Nama
@@ -92,12 +95,14 @@ const UserLaporan = () => {
                 <input
                   type="text"
                   id="nama"
-                  value={nama}
-                  onChange={(e) => setNama(e.target.value)}
+                  name="nama"
+                  value={formData.nama}
+                  onChange={handleChange}
                   className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                   required
                 />
               </div>
+              {/* Input Asal */}
               <div className="flex flex-col">
                 <label htmlFor="asal" className="mb-1 font-bold text-[#9500FF]">
                   Asal
@@ -105,12 +110,14 @@ const UserLaporan = () => {
                 <input
                   type="text"
                   id="asal"
-                  value={asal}
-                  onChange={(e) => setAsal(e.target.value)}
+                  name="asal"
+                  value={formData.asal}
+                  onChange={handleChange}
                   className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                   required
                 />
               </div>
+              {/* Input No. HP */}
               <div className="flex flex-col">
                 <label htmlFor="noHp" className="mb-1 font-bold text-[#9500FF]">
                   No. HP
@@ -118,12 +125,14 @@ const UserLaporan = () => {
                 <input
                   type="text"
                   id="noHp"
-                  value={noHp}
-                  onChange={(e) => setNoHp(e.target.value)}
+                  name="noHp"
+                  value={formData.noHp}
+                  onChange={handleChange}
                   className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                   required
                 />
               </div>
+              {/* Input Email */}
               <div className="flex flex-col">
                 <label
                   htmlFor="email"
@@ -134,12 +143,14 @@ const UserLaporan = () => {
                 <input
                   type="email"
                   id="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
                   className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                   required
                 />
               </div>
+              {/* Tombol Simpan */}
               <button
                 type="submit"
                 className={`w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md hover:bg-[#7a00cc] transition duration-200 ${
