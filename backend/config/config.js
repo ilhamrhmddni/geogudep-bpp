@@ -6,7 +6,7 @@ module.exports = {
   dialectModule: require("pg"),
   dialectOptions: {
     ssl: {
-      require: false, // tidak perlu untuk localhost
+      require: true, // tidak perlu untuk localhost
       rejectUnauthorized: false, // penting untuk Supabase
     },
   },
