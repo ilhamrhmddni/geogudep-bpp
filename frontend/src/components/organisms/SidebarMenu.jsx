@@ -33,7 +33,9 @@ const SidebarMenu = ({
     } else if (user_id) {
       const fetchProfilePic = async () => {
         try {
-          const response = await fetch(`http://localhost:3000/user/${user_id}`);
+          const response = await fetch(
+            `https://server-geogudep-bpp.vercel.app/user/${user_id}`
+          );
           const result = await response.json();
           if (response.ok) {
             const path = result?.data?.photo_path;

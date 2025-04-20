@@ -68,8 +68,6 @@ const port = process.env.PORT || 3000; // Gunakan process.env.PORT jika tersedia
 (async () => {
   try {
     await sequelize.authenticate();
-    console.log("✅ Database connection established successfully.");
-    console.log("✅ Application is running.");
     db.sequelize
       .authenticate()
       .then(() => {
