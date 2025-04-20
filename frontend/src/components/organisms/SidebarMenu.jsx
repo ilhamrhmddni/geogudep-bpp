@@ -164,7 +164,7 @@ const SidebarMenu = ({
                 } bg-gray-300 rounded-full flex items-center justify-center text-[#9500FF] font-bold`}
               >
                 <img
-                  src={isImageError ? "/default-profile.png" : profilePic}
+                  src={isImageError ? "" : profilePic}
                   alt="Profile"
                   className="w-full h-full rounded-full object-cover"
                   onError={() => setIsImageError(true)}

@@ -75,7 +75,7 @@ const Header = () => {
             <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
           ) : (
             <img
-              src={isImageError ? "/default-profile.png" : profilePic}
+              src={isImageError ? "" : profilePic}
               alt="Profile"
               className="w-8 h-8 rounded-full object-cover"
               onError={() => setIsImageError(true)}
