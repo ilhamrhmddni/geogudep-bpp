@@ -83,7 +83,7 @@ export const createUser = async (userData) => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(userData),
+      body: JSON.stringify(userData), // Ensure userData is serialized correctly
     });
 
     if (!response.ok) {

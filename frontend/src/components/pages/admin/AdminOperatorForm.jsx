@@ -100,6 +100,12 @@ const AdminOperatorForm = ({ isEdit }) => {
       return;
     }
 
+    // Ensure username is passed correctly
+    const userData = {
+      username: username.trim(),
+      ...(showChangePassword && password ? { password } : {}),
+    };
+
     // Konfirmasi sebelum submit
     const confirmSubmit = await Swal.fire({
       title: isEdit ? "Ubah Data Operator" : "Simpan Operator Baru",
@@ -120,19 +126,13 @@ const AdminOperatorForm = ({ isEdit }) => {
     }
 
     try {
-      const userData = new FormData();
-      userData.append("username", username);
-      if (showChangePassword && password) {
-        userData.append("password", password);
-      }
-
       if (isEdit && id) {
         await editUser(id, userData);
         Swal.fire("Sukses!", "Data operator berhasil diubah.", "success").then(
           () => navigate("/admin/operator")
         );
       } else {
-        await createUser(userData);
+        await createUser(userData); // Pass userData as an object
         Swal.fire("Sukses!", "Operator baru telah disimpan.", "success").then(
           () => navigate("/admin/operator")
         );
