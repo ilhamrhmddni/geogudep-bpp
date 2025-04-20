@@ -4,7 +4,7 @@ import { decodeToken } from "../../utils/jwt"; // Fungsi untuk mendekode token J
 
 const Header = () => {
   const navigate = useNavigate();
-  const [profilePic, setProfilePic] = useState("/default-profile.png");
+  const [profilePic, setProfilePic] = useState("");
   const [isImageError, setIsImageError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [noGudep, setNoGudep] = useState(null);
