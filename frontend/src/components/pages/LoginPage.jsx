@@ -61,7 +61,7 @@ const LoginPage = () => {
         return Swal.fire({
           icon: "error",
           title: "Login Gagal",
-          text: response.message || "Login gagal. Token tidak diterima.",
+          text: response.message || "Login gagal. Token tidak diterima.", // Tampilkan pesan error dari server
         });
       }
 
@@ -115,7 +115,7 @@ const LoginPage = () => {
       Swal.fire({
         icon: "error",
         title: "Terjadi Kesalahan",
-        text: error.message || "Terjadi kesalahan saat login.",
+        text: error.message || "Terjadi kesalahan saat login.", // Tampilkan pesan error dari catch block
       });
     } finally {
       setLoading(false);

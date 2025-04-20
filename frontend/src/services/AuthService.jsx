@@ -16,7 +16,7 @@ export const login = async (username, password) => {
     const result = await response.json(); // Parse response JSON
 
     if (!response.ok) {
-      // Jika response tidak OK, lempar error
+      // Jika response tidak OK, lempar error dengan pesan spesifik dari server
       throw new Error(result.message || "Network response was not ok");
     }
 
