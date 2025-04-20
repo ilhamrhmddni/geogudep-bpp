@@ -13,7 +13,7 @@ const Kwarran = sequelize.define(
     kode: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
+      unique: true, // Add unique constraint
     },
     nama: {
       type: DataTypes.STRING,

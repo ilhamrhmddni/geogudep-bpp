@@ -1,17 +1,32 @@
+const fs = require("fs");
+const path = require("path");
 require("dotenv").config();
 
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error(
+    "❌ DATABASE_URL is not defined in the environment variables."
+  );
+}
+
+const certsPath = path.join(__dirname, "certs");
+const sslOptions = {
+  require: false, // Match old configuration
+  rejectUnauthorized: false, // Match old configuration
+};
+
 module.exports = {
-  databaseUrl: process.env.SUPABASE_API_URL,
+  databaseUrl,
   dialect: "postgres",
   dialectModule: require("pg"),
   dialectOptions: {
-    ssl: {
-      require: true, // tidak perlu untuk localhost
-      rejectUnauthorized: false, // penting untuk Supabase
-    },
+    ssl: sslOptions,
   },
-  define: {
-    freezeTableName: true,
-    timestamps: false,
+  logging: false, // Disable logging for production
+  pool: {
+    max: 3,
+    min: 0,
+    acquire: 30000,
+    idle: 10000,
   },
 };

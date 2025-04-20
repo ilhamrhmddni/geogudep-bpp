@@ -5,6 +5,7 @@ const multer = require("multer");
 const axios = require("axios");
 require("dotenv").config();
 const db = require("./src/models");
+const sequelize = require("./config/db");
 
 const app = express();
 const rootRoutes = require("./src/routes");
@@ -61,15 +62,31 @@ app.use((err, req, res, next) => {
     .json({ message: "Terjadi kesalahan server", error: err.message });
 });
 
-const port = process.env.DB_HOST || 3000;
+const port = process.env.PORT || 3000; // Gunakan process.env.PORT jika tersedia
 
 // 🛠 Cek Koneksi Database & Jalankan Server
-db.sequelize
-  .authenticate()
-  .then(() => {
-    console.log("✅ Database connected!");
-    app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
-  })
-  .catch((err) => console.error("❌ Database connection error:", err));
+(async () => {
+  try {
+    await sequelize.authenticate();
+    console.log("✅ Database connection established successfully.");
+    console.log("✅ Application is running.");
+    db.sequelize
+      .authenticate()
+      .then(() => {
+        console.log("✅ Database connected!");
+        app.listen(port, () =>
+          console.log(`🚀 Server running on port ${port}`)
+        );
+      })
+      .catch((err) => {
+        console.error("❌ Database connection error:", err.message);
+        console.error("❌ Error details:", err); // Debugging: detail error
+        process.exit(1); // Keluar jika koneksi database gagal
+      });
+  } catch (error) {
+    console.error("❌ Failed to start the application:", error.message);
+    process.exit(1);
+  }
+})();
 
 module.exports = app;

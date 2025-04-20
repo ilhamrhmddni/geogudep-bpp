@@ -14,12 +14,12 @@ User.init(
     username: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
+      unique: true, // Add unique constraint
     },
     email: {
       type: DataTypes.STRING,
-      allowNull: true,
-      unique: false,
+      allowNull: false,
+      unique: true,
     },
     password: {
       type: DataTypes.STRING,
@@ -49,7 +49,6 @@ User.init(
   },
   {
     sequelize,
-    modelName: "User", // Nama model didefinisikan di sini
     timestamps: true,
     freezeTableName: true,
     tableName: "user",

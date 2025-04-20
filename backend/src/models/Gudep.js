@@ -1,6 +1,7 @@
 const { Sequelize, DataTypes } = require("sequelize");
 const sequelize = require("../../config/db");
 const Kwarran = require("./Kwarran");
+const User = require("./User");
 
 const Gudep = sequelize.define(
   "Gudep",
@@ -12,28 +13,26 @@ const Gudep = sequelize.define(
       primaryKey: true,
     },
     user_id: {
-      type: DataTypes.UUID,
+      type: DataTypes.UUID, // Ensure this matches the User model's id type
       allowNull: true,
       references: {
-        model: "user",
+        model: "user", // Ensure this matches the table name of the User model
         key: "id",
         as: "useres",
       },
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
-      field: "user_id",
     },
     kwarran_id: {
       type: DataTypes.UUID,
       allowNull: true,
       references: {
-        model: "kwarran",
+        model: Kwarran,
         key: "id",
         as: "kwarranes",
       },
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
-      field: "kwarran_id",
     },
     pangkalan: {
       type: DataTypes.STRING,
@@ -49,7 +48,7 @@ const Gudep = sequelize.define(
     },
     tingkatan: {
       type: DataTypes.ENUM("Siaga", "Penggalang", "Penegak/Pandega", "Pandega"),
-      defaultValue: "Penegak",
+      defaultValue: "Penegak/Pandega",
       allowNull: false,
     },
     mabigus: {
@@ -99,32 +98,66 @@ const Gudep = sequelize.define(
   }
 );
 
-// **🔹 Function untuk update jumlah_gudep di Kwarran**
-async function updateJumlahGudep(kwarran_id) {
-  if (!kwarran_id) return; // **Cegah error jika kwarran_id kosong**
-  const jumlahGudep = await Gudep.count({ where: { kwarran_id } });
-  await Kwarran.update(
-    { jumlah_gudep: jumlahGudep },
-    { where: { id: kwarran_id } }
-  );
-}
-
-// **🔹 Hook setelah CREATE Gudep**
-Gudep.afterCreate(async (gudep, options) => {
-  await updateJumlahGudep(gudep.kwarran_id);
+// Hook after CREATE Gudep
+Gudep.afterCreate(async (gudep) => {
+  try {
+    if (gudep.kwarran_id) {
+      const jumlahGudep = await Gudep.count({
+        where: { kwarran_id: gudep.kwarran_id },
+      });
+      await Kwarran.update(
+        { jumlah_gudep: jumlahGudep },
+        { where: { id: gudep.kwarran_id } }
+      );
+    }
+  } catch (error) {
+    console.error("❌ Error in afterCreate hook:", error.message);
+  }
 });
 
-// **🔹 Hook setelah DELETE Gudep**
-Gudep.afterDestroy(async (gudep, options) => {
-  await updateJumlahGudep(gudep.kwarran_id);
+// Hook after DELETE Gudep
+Gudep.afterDestroy(async (gudep) => {
+  try {
+    if (gudep.kwarran_id) {
+      const jumlahGudep = await Gudep.count({
+        where: { kwarran_id: gudep.kwarran_id },
+      });
+      await Kwarran.update(
+        { jumlah_gudep: jumlahGudep },
+        { where: { id: gudep.kwarran_id } }
+      );
+    }
+  } catch (error) {
+    console.error("❌ Error in afterDestroy hook:", error.message);
+  }
 });
 
-// **🔹 Hook setelah UPDATE Gudep (Jika Pindah Kwarran)**
-Gudep.afterUpdate(async (gudep, options) => {
-  const prevKwarranId = gudep.previous("kwarran_id");
-  if (prevKwarranId !== gudep.kwarran_id) {
-    await updateJumlahGudep(prevKwarranId); // Update kwarran lama
-    await updateJumlahGudep(gudep.kwarran_id); // Update kwarran baru
+// Hook after UPDATE Gudep
+Gudep.afterUpdate(async (gudep) => {
+  try {
+    const prevKwarranId = gudep.previous("kwarran_id");
+    if (prevKwarranId !== gudep.kwarran_id) {
+      if (prevKwarranId) {
+        const prevJumlahGudep = await Gudep.count({
+          where: { kwarran_id: prevKwarranId },
+        });
+        await Kwarran.update(
+          { jumlah_gudep: prevJumlahGudep },
+          { where: { id: prevKwarranId } }
+        );
+      }
+      if (gudep.kwarran_id) {
+        const newJumlahGudep = await Gudep.count({
+          where: { kwarran_id: gudep.kwarran_id },
+        });
+        await Kwarran.update(
+          { jumlah_gudep: newJumlahGudep },
+          { where: { id: gudep.kwarran_id } }
+        );
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error in afterUpdate hook:", error.message);
   }
 });
 
