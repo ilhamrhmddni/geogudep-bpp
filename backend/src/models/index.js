@@ -84,7 +84,8 @@ db.Prestasi.belongsTo(db.Event, { foreignKey: "event_id", as: "eventes" });
         transaction, // Ensure this operation is part of the transaction
       });
 
-      if (created) {
+      if (created && user.role === "admin") {
+        // Only create Gudep and Geografis for admin
         const gudep = await db.Gudep.create(
           {
             user_id: user.id,
