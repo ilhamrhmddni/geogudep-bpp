@@ -146,7 +146,7 @@ const UserGugusdepan = () => {
               width: isFullScreen ? "100vw" : "100%", // Pastikan lebar 100% layar
             }}
             className={`my-4 rounded-xl leaflet-container ${
-              isFullScreen ? "full-screen-map" : ""
+              isFullScreen ? "full-screen-map " : ""
             }`}
             onClick={() => setSelectedGugusdepan(null)}
           >
@@ -382,7 +382,7 @@ const UserGugusdepan = () => {
             left: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
-            z-index: 1000 !important;
+            z-index: 1200 !important; /* Set z-index below the toggle button */
             margin: 0 !important;
             padding: 0 !important;
           }
