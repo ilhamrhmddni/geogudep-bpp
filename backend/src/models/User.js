@@ -1,10 +1,9 @@
-// models/User.js
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../../config/db");
-const db = require("./index"); // Pastikan untuk mengimpor db
 
-const User = sequelize.define(
-  "User",
+class User extends Model {}
+
+User.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -50,6 +49,7 @@ const User = sequelize.define(
   },
   {
     sequelize,
+    modelName: "User", // Nama model didefinisikan di sini
     timestamps: true,
     freezeTableName: true,
     tableName: "user",

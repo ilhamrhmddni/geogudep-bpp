@@ -10,4 +10,8 @@ module.exports = {
       rejectUnauthorized: false, // penting untuk Supabase
     },
   },
+  define: {
+    freezeTableName: true,
+    timestamps: false,
+  },
 };
