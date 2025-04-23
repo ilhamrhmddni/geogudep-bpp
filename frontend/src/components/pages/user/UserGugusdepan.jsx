@@ -4,12 +4,27 @@ import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import "leaflet/dist/leaflet.css";
 import React, { useEffect, useState } from "react";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import {
+  GeoJSON,
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  useMap,
+} from "react-leaflet";
 import { fetchGeografis } from "../../../services/GeografisService";
 import { fetchGugusdepan } from "../../../services/GugusdepanService";
 import { fetchKwarran } from "../../../services/KwarranService";
-import HeaderUser from "../../organisms/HeaderUser";
+import Dropdown from "../../atoms/Dropdown";
 import UserTemplate from "../../templates/UserTemplate";
+
+// Import GeoJSON files
+import BalikpapanBarat from "../../../geojson/BalikpapanBarat.json";
+import BalikpapanKota from "../../../geojson/BalikpapanKota.json";
+import BalikpapanSelatan from "../../../geojson/BalikpapanSelatan.json";
+import BalikpapanTengah from "../../../geojson/BalikpapanTengah.json";
+import BalikpapanTimur from "../../../geojson/BalikpapanTimur.json";
+import BalikpapanUtara from "../../../geojson/BalikpapanUtara.json";
 
 // Fix untuk menampilkan marker icon di Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -45,6 +60,83 @@ const ToggleMapSize = ({ isFullScreen, setIsFullScreen }) => {
   );
 };
 
+// Komponen untuk filters pada peta
+const MapFilters = ({
+  kwarranOptions,
+  selectedKwarran,
+  setSelectedKwarran,
+  selectedTingkatan,
+  setSelectedTingkatan,
+  resetFilters,
+}) => {
+  const tingkatanOptions = [
+    { nama: "Siaga" },
+    { nama: "Penggalang" },
+    { nama: "Penegak/Pandega" },
+    { nama: "Pandega" },
+  ];
+
+  return (
+    <div
+      className="absolute bottom-5 left-5 z-50 flex flex-col gap-2 bg-white p-2 rounded-lg shadow-lg"
+      style={{ zIndex: 1000 }}
+    >
+      <h3 className="font-bold text-[#9500FF] text-center text-md">
+        Filter Peta
+      </h3>
+      <div className="bg-[#9500FF] rounded-xl">
+        <Dropdown
+          options={kwarranOptions}
+          selected={selectedKwarran}
+          onChange={setSelectedKwarran}
+          placeholder="Filter Kwarran"
+        />
+      </div>
+      <div className="bg-[#9500FF] rounded-xl">
+        <Dropdown
+          options={tingkatanOptions}
+          selected={selectedTingkatan}
+          onChange={setSelectedTingkatan}
+          placeholder="Filter Tingkatan"
+        />
+      </div>
+      <button
+        onClick={resetFilters}
+        className="bg-gray-200 hover:bg-gray-300 text-gray-800 mt-2 font-bold py-1 px-3 rounded-xl"
+      >
+        Reset Filter
+      </button>
+    </div>
+  );
+};
+
+// Legenda untuk peta
+const MapLegend = () => {
+  return (
+    <div className="absolute md:visible invisible bottom-10 right-5 z-1000 bg-white p-2 rounded-lg shadow-lg">
+      <h4 className="font-bold text-sm mb-2">Legenda Tingkatan</h4>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-green-500"></div>
+          <span className="text-xs">Siaga</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-red-500"></div>
+          <span className="text-xs">Penggalang</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
+          <span className="text-xs">Penegak/Pandega</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-black"></div>
+          <span className="text-xs">Pandega</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Komponen untuk memindahkan peta ke lokasi pengguna
 const FlyToUserLocation = () => {
   const map = useMap();
@@ -76,6 +168,21 @@ const UserGugusdepan = () => {
   const [error, setError] = useState(null);
   const [selectedGugusdepan, setSelectedGugusdepan] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [selectedKwarran, setSelectedKwarran] = useState(""); // State untuk filter Kwarran
+  const [selectedTingkatan, setSelectedTingkatan] = useState(""); // State untuk filter Tingkatan
+  const [showGeoJSON, setShowGeoJSON] = useState(true); // State untuk toggle GeoJSON
+  const [kwarranColors, setKwarranColors] = useState({}); // State untuk menyimpan warna per kwarran
+  const [geoJSONSourceData, setGeoJSONSourceData] = useState(null); // State baru
+
+  // GeoJSON data
+  const geoJSONData = {
+    "Balikpapan Barat": BalikpapanBarat,
+    "Balikpapan Kota": BalikpapanKota,
+    "Balikpapan Selatan": BalikpapanSelatan,
+    "Balikpapan Timur": BalikpapanTimur,
+    "Balikpapan Tengah": BalikpapanTengah,
+    "Balikpapan Utara": BalikpapanUtara,
+  };
 
   // Mengambil data geografis, gugusdepan, dan kwarran secara paralel
   useEffect(() => {
@@ -90,6 +197,23 @@ const UserGugusdepan = () => {
         setGeografisData(geoResult.data || []);
         setGugusdepanData(gudepResult.data || []);
         setKwarranData(kwarranResult.data || []);
+
+        // Generate warna unik untuk setiap kwarran
+        const colors = {};
+        const colorOptions = [
+          "#de8685",
+          "#89da73",
+          "#dc7ac5",
+          "#d59a24",
+          "#ceee8d",
+          "#4dabf7",
+        ];
+
+        kwarranResult.data.forEach((kwarran, index) => {
+          colors[kwarran.nama] = colorOptions[index % colorOptions.length];
+        });
+
+        setKwarranColors(colors);
       } catch (error) {
         setError("Error fetching data.");
         console.error("Error fetching data:", error);
@@ -100,9 +224,15 @@ const UserGugusdepan = () => {
     fetchData();
   }, []);
 
+  // Reset filter function
+  const resetFilters = () => {
+    setSelectedKwarran("");
+    setSelectedTingkatan("");
+  };
+
   // Posisi default peta
   const defaultPosition = [-1.2550458, 116.8878243];
-  const initialZoom = 5;
+  const initialZoom = 12;
 
   // Fungsi untuk menentukan warna marker berdasarkan tingkatan
   const getMarkerColor = (tingkatan) => {
@@ -133,19 +263,203 @@ const UserGugusdepan = () => {
     });
   };
 
+  // Filter gugusdepan berdasarkan kwarran dan tingkatan yang dipilih
+  const filteredGugusdepan = gugusdepanData.filter((gudep) => {
+    // Filter untuk Kwarran
+    const kwarranMatch =
+      !selectedKwarran ||
+      (gudep.kwarran_id &&
+        kwarranData.find(
+          (kwarran) =>
+            kwarran.id === gudep.kwarran_id && kwarran.nama === selectedKwarran
+        ));
+
+    // Filter untuk Tingkatan
+    const tingkatanMatch =
+      !selectedTingkatan ||
+      (gudep.tingkatan &&
+        gudep.tingkatan.toLowerCase() === selectedTingkatan.toLowerCase());
+
+    return kwarranMatch && tingkatanMatch;
+  });
+
+  // Filter geografis berdasarkan gugusdepan yang sudah difilter
+  const filteredGeografis = geografisData.filter((geo) => {
+    const matchedGudep = filteredGugusdepan.find(
+      (gudep) => gudep.id === geo.gudep_id
+    );
+    return matchedGudep !== undefined;
+  });
+
+  // Style untuk GeoJSON berdasarkan kwarran
+  // Style untuk GeoJSON berdasarkan kwarran
+  const geoJSONStyle = (feature) => {
+    const kwarranName = feature.properties?.nama; // Nama dari data GeoJSON
+    const originalColor = kwarranColors[kwarranName] || "#9500FF";
+    const inactiveColor = "#AAAAAA";
+
+    // --- DEBUG LOG AWAL ---
+    // Cetak nama dari GeoJSON dan state selectedKwarran saat ini
+    console.log(
+      `--- Styling --- GeoJSON Name: "<span class="math-inline">\{kwarranName\}" \| Selected State\: "</span>{selectedKwarran}"`
+    );
+    // --- END DEBUG LOG ---
+
+    if (selectedKwarran && kwarranName === selectedKwarran) {
+      // --- DEBUG LOG MATCH ---
+      console.log(`   ✅ MATCH! Applying HIGHLIGHT style for "${kwarranName}"`);
+      // --- END DEBUG LOG ---
+      return {
+        fillColor: originalColor,
+        weight: 3,
+        opacity: 1,
+        color: "#333",
+        fillOpacity: 0.6,
+      };
+    } else if (selectedKwarran && kwarranName !== selectedKwarran) {
+      // --- DEBUG LOG NO MATCH (Filter Active) ---
+      console.log(
+        `   ❌ No Match (Filter Active). Applying INACTIVE style for "${kwarranName}"`
+      );
+      // --- END DEBUG LOG ---
+      return {
+        fillColor: inactiveColor,
+        weight: 1,
+        opacity: 0.7,
+        color: "#888",
+        fillOpacity: 0.5,
+      };
+    } else {
+      // Default: !selectedKwarran
+      // --- DEBUG LOG DEFAULT ---
+      console.log(
+        `   -- No Filter. Applying DEFAULT style for "${kwarranName}"`
+      );
+      // --- END DEBUG LOG ---
+      return {
+        fillColor: originalColor,
+        weight: 2,
+        opacity: 0.7,
+        color: "#666",
+        fillOpacity: 0.2,
+      };
+    }
+  };
+
+  // Event handlers untuk GeoJSON
+  const onEachFeature = (feature, layer) => {
+    console.log("Processing feature:", feature); // Log untuk melihat fitur yang sedang diproses
+
+    if (feature.properties && feature.properties.nama) {
+      const kwarranName = feature.properties.nama;
+
+      // Hitung jumlah gudep di kwarran ini
+      const gudepInKwarran = gugusdepanData.filter((gudep) => {
+        const kwarran = kwarranData.find((k) => k.id === gudep.kwarran_id);
+        return kwarran && kwarran.nama === kwarranName;
+      });
+
+      // Hitung jumlah untuk setiap tingkatan
+      const siagaCount = gudepInKwarran.filter(
+        (g) => g.tingkatan === "Siaga"
+      ).length;
+      const penggalangCount = gudepInKwarran.filter(
+        (g) => g.tingkatan === "Penggalang"
+      ).length;
+      const penegakCount = gudepInKwarran.filter(
+        (g) => g.tingkatan === "Penegak/Pandega"
+      ).length;
+      const pandegaCount = gudepInKwarran.filter(
+        (g) => g.tingkatan === "Pandega"
+      ).length;
+
+      layer.bindPopup(`
+      <div class="">
+        <h3 class="font-bold text-lg">Kwarran ${kwarranName}</h3>
+        <span><strong>Total Gudep:</strong> ${gudepInKwarran.length}</span><br/>
+        <span><strong>Siaga:</strong> ${siagaCount}</span><br/>
+        <span><strong>Penggalang:</strong> ${penggalangCount}</span><br/>
+        <span><strong>Penegak/Pandega:</strong> ${penegakCount}</span><br/>
+        <span><strong>Pandega:</strong> ${pandegaCount}</span>
+      </div>
+    `);
+
+      // Hapus event handlers untuk hover
+      layer.on({
+        click: (e) => {
+          console.log(
+            `--- CLICK EVENT --- Feature Name Found: "${kwarranName}"`
+          );
+          console.log(`   Setting selectedKwarran state to: "${kwarranName}"`);
+          // Set filter ke kwarran yang diklik
+          setSelectedKwarran(kwarranName);
+        },
+      });
+    }
+  };
+
+  // Toggle untuk menampilkan/menyembunyikan GeoJSON
+  const toggleGeoJSON = () => {
+    setShowGeoJSON(!showGeoJSON);
+  };
+
+  // Bulan legenda kwarran
+  const KwarranLegend = () => {
+    return (
+      <div className="absolute md:visible invisible bottom-50 right-5 z-1000 bg-white px-3 py-2 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+        <h4 className="font-bold text-sm mb-2">Legenda Kwarran</h4>
+        <div className="flex flex-col gap-1">
+          {Object.entries(kwarranColors).map(([kwarranName, color]) => (
+            <div key={kwarranName} className="flex items-center gap-2">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: color }}
+              ></div>
+              <span className="text-xs">{kwarranName}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <UserTemplate>
-      <HeaderUser />
-      <div className={`md:ml-18 rounded-xl shadow-xl `}>
-        <div className="p-4">
+      <div className={`md:ml-18 rounded-xl shadow-xl mt-4 md:mt-15 `}>
+        <div className="p-4 md:mt-18">
+          {/* Info panel showing filter states */}
+          {(selectedKwarran || selectedTingkatan) && (
+            <div className="bg-blue-50 p-3 rounded-lg mb-3 flex justify-between items-center">
+              <div>
+                <span className="font-semibold">Filter Aktif:</span>
+                {selectedKwarran && (
+                  <span className="ml-2 bg-[#9500FF] text-white px-2 py-1 rounded">
+                    Kwarran: {selectedKwarran}
+                  </span>
+                )}
+                {selectedTingkatan && (
+                  <span className="ml-2 bg-[#9500FF] text-white px-2 py-1 rounded">
+                    Tingkatan: {selectedTingkatan}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={resetFilters}
+                className="text-sm text-gray-600 hover:text-gray-800"
+              >
+                Reset
+              </button>
+            </div>
+          )}
+
           <MapContainer
             center={defaultPosition}
             zoom={initialZoom}
             style={{
-              height: isFullScreen ? "100vh" : "400px", // Pastikan tinggi 100% layar
-              width: isFullScreen ? "100vw" : "100%", // Pastikan lebar 100% layar
+              height: isFullScreen ? "100vh" : "500px", // Tinggi peta lebih besar
+              width: isFullScreen ? "100vw" : "100%",
             }}
-            className={`my-4 rounded-xl leaflet-container ${
+            className={`rounded-xl leaflet-container ${
               isFullScreen ? "full-screen-map " : ""
             }`}
             onClick={() => setSelectedGugusdepan(null)}
@@ -161,8 +475,21 @@ const UserGugusdepan = () => {
                 </p>
               </div>
             )}
+
+            {/* GeoJSON Layers dengan warna berdasarkan kwarran */}
+            {showGeoJSON &&
+              Object.entries(geoJSONData).map(([key, data]) => (
+                <GeoJSON
+                  key={key}
+                  data={data}
+                  style={geoJSONStyle}
+                  onEachFeature={onEachFeature}
+                />
+              ))}
+
+            {/* Markers */}
             {!loading &&
-              geografisData.map((geo) => {
+              filteredGeografis.map((geo) => {
                 const matchedGudep = gugusdepanData.find(
                   (gudep) => gudep.id === geo.gudep_id
                 );
@@ -172,6 +499,14 @@ const UserGugusdepan = () => {
                 if (!isNaN(lat) && !isNaN(lng) && matchedGudep) {
                   const markerColor = getMarkerColor(matchedGudep.tingkatan);
                   const customIcon = createCustomIcon(markerColor);
+
+                  // Dapatkan nama kwarran untuk gudep ini
+                  const kwarran = kwarranData.find(
+                    (k) => k.id === matchedGudep.kwarran_id
+                  );
+                  const kwarranName = kwarran
+                    ? kwarran.nama
+                    : "Tidak diketahui";
 
                   return (
                     <Marker
@@ -184,11 +519,15 @@ const UserGugusdepan = () => {
                     >
                       <Popup>
                         <div className="bg-white rounded-lg text-gray-800 font-semibold">
-                          <b>Pangkalan:</b>{" "}
-                          {matchedGudep.pangkalan || "Data Belum Tersedia"}
+                          <h4 className="font-bold text-[#9500FF] mb-1">
+                            {matchedGudep.pangkalan || "Data Belum Tersedia"}
+                          </h4>
+                          <b>
+                            No. Gudep :{" "}
+                            {matchedGudep.no_gudep || "Data Belum Tersedia"}
+                          </b>
                           <br />
-                          <b>No. Gudep:</b>{" "}
-                          {matchedGudep.no_gudep || "Data Belum Tersedia"}
+                          <b>Kwarran: {kwarranName}</b>
                         </div>
                       </Popup>
                     </Marker>
@@ -196,15 +535,31 @@ const UserGugusdepan = () => {
                 }
                 return null;
               })}
+
+            {/* Komponen-komponen peta */}
             <ToggleMapSize
               isFullScreen={isFullScreen}
               setIsFullScreen={setIsFullScreen}
             />
+            <MapFilters
+              kwarranOptions={kwarranData}
+              selectedKwarran={selectedKwarran}
+              setSelectedKwarran={setSelectedKwarran}
+              selectedTingkatan={selectedTingkatan}
+              setSelectedTingkatan={setSelectedTingkatan}
+              resetFilters={resetFilters}
+            />
+            <MapLegend />
+            <KwarranLegend />
             <FlyToUserLocation />
           </MapContainer>
 
+          {/* Detail gudep yang dipilih */}
           {!isFullScreen && selectedGugusdepan && (
-            <div className="my-4 space-y-4 px-4">
+            <div className="my-4 space-y-4 px-4 bg-white p-4 rounded-xl shadow">
+              <h3 className="text-xl font-bold text-[#9500FF]">
+                Detail Gugus Depan
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
@@ -382,7 +737,7 @@ const UserGugusdepan = () => {
             left: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
-            z-index: 1200 !important; /* Set z-index below the toggle button */
+            z-index: 1500 !important; /* Pastikan lebih tinggi dari elemen lain */
             margin: 0 !important;
             padding: 0 !important;
           }

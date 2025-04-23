@@ -13,7 +13,7 @@ const Dropdown = ({
     <select
       value={selected} // Nilai yang dipilih
       onChange={(e) => onChange(e.target.value)} // Panggil fungsi onChange saat nilai berubah
-      className="p-2 border-2 border-white rounded-md text-white font-bold cursor-pointer"
+      className="p-2 border-white rounded-md text-white font-bold cursor-pointer"
     >
       {/* Placeholder sebagai opsi default */}
       <option value="" className="text-[#9500FF] font-bold">

@@ -11,7 +11,7 @@ import {
 } from "../../../services/GugusdepanService";
 import {
   deletePesertadidik,
-  fetchPesertadidik,
+  fetchPesertadidikByGudep,
 } from "../../../services/PesertadidikService";
 import { decodeToken } from "../../../utils/jwt";
 
@@ -27,20 +27,27 @@ const OperatorPesertaDidik = () => {
   const gudepId = tokenData?.gudep_id;
 
   // Fungsi untuk mengambil data peserta didik dari API
+  // Di dalam OperatorPesertaDidik.jsx
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       if (!gudepId) throw new Error("Gudep ID tidak ditemukan di token.");
-      const response = await fetchPesertadidik(gudepId);
-      setData(response.data.filter((item) => item.gudep_id === gudepId));
+
+      // --- PANGGIL FUNGSI YANG LEBIH SPESIFIK ---
+      const response = await fetchPesertadidikByGudep(gudepId);
+      // -----------------------------------------
+
+      // Asumsikan response.data sudah berisi array yang terfilter dari backend
+      setData(response.data || []); // Langsung set data, tidak perlu filter lagi
     } catch (err) {
-      console.error("Error fetching data:", err);
-      setError("Gagal mengambil data.");
+      console.error("Error fetching data by Gudep:", err); // Sesuaikan pesan log
+      setError("Gagal mengambil data peserta didik untuk Gugus Depan ini."); // Pesan error lebih spesifik
     } finally {
       setLoading(false);
     }
-  }, [gudepId]);
+  }, [gudepId]); // Dependency tetap gudepId
 
   // Panggil fetchData saat komponen pertama kali dimuat
   useEffect(() => {
@@ -82,8 +89,8 @@ const OperatorPesertaDidik = () => {
         text: "Data yang dihapus tidak dapat dikembalikan!",
         icon: "warning",
         showCancelButton: true,
-        confirmButtonColor: "#d33",
-        cancelButtonColor: "#3085d6",
+        confirmButtonColor: "#7a00cc",
+        cancelButtonColor: "#9500FF",
         confirmButtonText: "Ya, hapus!",
       });
 
@@ -153,16 +160,23 @@ const OperatorPesertaDidik = () => {
   );
 
   // Transformasi data untuk ditampilkan di tabel
+  // Di dalam OperatorPesertaDidik.jsx
+
+  // Transformasi data untuk ditampilkan di tabel
   const transformedData = useMemo(() => {
     return filteredData.map((item, index) => ({
+      // --- TAMBAHKAN KEMBALI 'id' DI LEVEL ATAS ---
+      id: item.id, // Pastikan ID asli ada di sini
+      // ---------------------------------------
       no: index + 1,
       nama: item.nama,
       gender: item.gender,
       ttl: new Date(item.ttl).toLocaleDateString("id-ID"),
       detailtingkatan: item.detailtingkatan,
-      actions: item, // Kirim item untuk digunakan di TableCRUD
+      // 'actions: item' tidak lagi diperlukan di sini jika tidak dipakai TableCRUD
+      // actions: item, // Anda bisa hapus baris ini jika tidak dipakai lagi
     }));
-  }, [filteredData]);
+  }, [filteredData]); // filteredData adalah data asli peserta didik
 
   return (
     <OperatorTemplate>

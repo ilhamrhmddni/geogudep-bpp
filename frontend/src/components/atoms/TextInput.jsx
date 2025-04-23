@@ -16,7 +16,7 @@ const InputDefault = ({
       placeholder={placeholder} // Placeholder input
       value={value} // Nilai input
       onChange={onChange} // Fungsi yang dipanggil saat nilai berubah
-      className="border rounded-full border-gray-300 px-8 py-3 w-full bg-white font-semibold" // Styling input
+      className="border rounded-md border-gray-300 px-8 py-3 w-full bg-white" // Styling input
     />
   );
 };

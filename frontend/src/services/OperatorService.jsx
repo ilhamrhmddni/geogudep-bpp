@@ -1,5 +1,5 @@
 // URL dasar API
-const API_URL = "https://server-geogudep-bpp.vercel.app/";
+const API_URL = "http://localhost:3000/";
 
 // Fungsi untuk mengambil data User berdasarkan ID
 export const fetchUserId = async (id) => {
@@ -16,26 +16,42 @@ export const fetchUserId = async (id) => {
   }
 };
 
-// Fungsi untuk mengedit data User
+// Fungsi untuk mengedit data User (DIPERBAIKI)
 export const editUser = async (id, userData) => {
   try {
-    // Penting: Gunakan JSON.stringify() untuk mengubah objek JavaScript ke JSON
+    // Opsional: Log data yang akan dikirim dari service
+    // console.log("Service editUser sending data:", JSON.stringify(userData));
+
     const response = await fetch(`${API_URL}user/${id}`, {
-      method: "PUT",
-      body: userData, // Kirim FormData langsung tanpa header Content-Type
+      method: "PUT", // Pastikan method PUT (atau PATCH) sesuai dengan backend Anda
+      headers: {
+        "Content-Type": "application/json", // <-- HEADER DITAMBAHKAN
+      },
+      body: JSON.stringify(userData), // <-- BODY DI-JSON.stringify()
     });
 
+    // Penanganan response error yang sedikit lebih baik
     if (!response.ok) {
-      const errorMessage = await response.text();
-      console.error("Error response:", errorMessage);
-      throw new Error(`Failed to update user profile: ${errorMessage}`);
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        // Coba baca error sebagai JSON dari backend
+        const errorData = await response.json();
+        errorMessage = errorData.message || JSON.stringify(errorData); // Ambil message jika ada
+      } catch (e) {
+        // Jika error bukan JSON, baca sebagai teks biasa
+        errorMessage = await response.text();
+      }
+      console.error("Server Response Error (editUser):", errorMessage);
+      throw new Error(`Gagal memperbarui profil user: ${errorMessage}`);
     }
 
+    // Jika sukses, diasumsikan response berupa JSON
     const result = await response.json();
     return result;
   } catch (error) {
-    console.error("Error updating user profile:", error);
-    throw error;
+    // Menangkap error dari fetch atau dari throw di atas
+    console.error("Error in editUser service function:", error);
+    throw error; // Lempar ulang error agar bisa ditangkap oleh komponen (handleSubmit)
   }
 };
 

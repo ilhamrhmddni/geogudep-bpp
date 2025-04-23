@@ -35,7 +35,7 @@ const AdminHeader = ({
               placeholder="Cari..."
               value={searchValue}
               onChange={onSearchChange}
-              className="p-2 pl-10 rounded-full border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
+              className="p-2 pl-10 rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
             />
             <span className="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
               search
@@ -48,7 +48,7 @@ const AdminHeader = ({
         {showAddButton && (
           <button
             onClick={onAddClick}
-            className="bg-white text-[#9500FF] px-4 py-2 rounded-2xl border-2 border-[#9500FF] cursor-pointer font-bold flex gap-2 items-center"
+            className="bg-white text-[#9500FF] px-4 py-2 rounded-md border-2 border-[#9500FF] cursor-pointer font-bold flex gap-2 items-center"
           >
             <span className="material-icons">add</span>
             <span className="hidden md:block">Tambah</span>

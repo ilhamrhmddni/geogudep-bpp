@@ -1,14 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import { editUser, fetchProfile } from "../../../services/OperatorService";
+import { fetchProfile, updateProfile } from "../../../services/ProfileService"; // Gunakan ProfileService
 import { decodeToken } from "../../../utils/jwt";
 import Label from "../../atoms/FormLabel";
-import Input from "../../atoms/TextInput";
-import OperatorTemplate from "../../templates/OperatorTemplate";
+import Input from "../../atoms/TextInput"; // Menggunakan komponen Input atom
+
+// --- PERUBAHAN: Import Template ---
+import OperatorTemplate from "../../templates/OperatorTemplate"; // Ganti dengan OperatorTemplate
 
 const OperatorProfile = () => {
-  // State untuk menyimpan data pengguna
+  // --- PERUBAHAN: Nama Komponen ---
   const [userData, setUserData] = useState({
     username: "",
     email: "",
@@ -17,56 +19,50 @@ const OperatorProfile = () => {
     no_telp: "",
     photo_path: "",
   });
-  const [loading, setLoading] = useState(false); // State untuk status loading
-  const [error, setError] = useState(null); // State untuk pesan error
-  const [successMessage, setSuccessMessage] = useState(""); // State untuk pesan sukses
-  const [photo, setPhoto] = useState(null); // State untuk file foto yang diunggah
-  const [photoPreview, setPhotoPreview] = useState(null); // State untuk preview foto
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [photo, setPhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState(null);
 
-  // Decode token untuk mendapatkan userId
+  const navigate = useNavigate();
   const decodedToken = useMemo(() => decodeToken(), []);
   const userId = decodedToken?.user_id;
 
-  // Fungsi untuk mengambil data pengguna berdasarkan ID
-  const fetchUserData = useCallback(async (id) => {
+  // --- (Fungsi fetchProfileData, useEffect, handleInputChange, handlePhotoChange, handleUserUpdate - SAMA PERSIS DENGAN AdminProfile ---
+  const fetchProfileData = useCallback(async (id) => {
+    if (!id) {
+      setError("User ID tidak ditemukan dari token.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const data = await fetchProfile(id);
       setUserData(data);
-      setPhotoPreview(data.photo_path || null);
+      const currentPhotoUrl = data.photo_path || null;
+      setExistingPhotoUrl(currentPhotoUrl);
+      setPhotoPreview(currentPhotoUrl);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Gagal mengambil data profil.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Ambil data pengguna saat komponen pertama kali dimuat
   useEffect(() => {
-    if (!userId) {
-      setError("Token invalid or not found");
-      return;
-    }
-    fetchUserData(userId);
-  }, [userId, fetchUserData]);
+    fetchProfileData(userId);
+  }, [userId, fetchProfileData]);
 
-  // Fungsi untuk menangani perubahan input form
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
-    setUserData((prevUserData) => ({
-      ...prevUserData,
-      [name]: value,
-    }));
+    setUserData((prevData) => ({ ...prevData, [name]: value }));
   }, []);
 
-  // Fungsi untuk menangani perubahan file foto
   const handlePhotoChange = useCallback(
     (e) => {
       const file = e.target.files[0];
       setPhoto(file);
-
       if (file) {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -74,38 +70,35 @@ const OperatorProfile = () => {
         };
         reader.readAsDataURL(file);
       } else {
-        setPhotoPreview(userData.photo_path || null);
+        setPhotoPreview(existingPhotoUrl || null);
         setPhoto(null);
       }
     },
-    [userData.photo_path]
+    [existingPhotoUrl]
   );
 
-  // Fungsi untuk memperbarui profil pengguna
   const handleUserUpdate = useCallback(
     async (e) => {
       e.preventDefault();
+      if (!userId) {
+        Swal.fire("Error", "User ID tidak ditemukan.", "error");
+        return;
+      }
 
       Swal.fire({
         title: "Ubah Profil",
         text: "Apakah Anda yakin ingin memperbarui profil?",
         icon: "warning",
         showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
+        confirmButtonColor: "#7a00cc",
+        cancelButtonColor: "#9500FF",
         confirmButtonText: "Ya, lanjutkan!",
+        cancelButtonText: "Batal",
       }).then(async (result) => {
         if (result.isConfirmed) {
           setLoading(true);
           setError(null);
-          setSuccessMessage("");
-
           try {
-            if (!userId) {
-              setError("Token invalid or not found");
-              return;
-            }
-
             const formData = new FormData();
             formData.append("username", userData.username);
             formData.append("email", userData.email);
@@ -113,26 +106,28 @@ const OperatorProfile = () => {
             formData.append("asal", userData.asal);
             formData.append("no_telp", userData.no_telp);
             if (photo) {
-              formData.append("photo_path", photo);
+              formData.append("profilePicture", photo, photo.name); // Pastikan nama field backend cocok
             }
-
-            await editUser(userId, formData); // Panggil API untuk memperbarui data
-            await fetchUserData(userId); // Refresh data pengguna
-            setSuccessMessage("Profil berhasil diperbarui!");
+            await updateProfile(userId, formData);
+            await fetchProfileData(userId);
             Swal.fire("Berhasil!", "Profil Anda telah diperbarui.", "success");
           } catch (err) {
-            setError(err.message);
-            Swal.fire("Gagal!", err.message, "error");
+            setError(
+              err.message || "Terjadi kesalahan saat memperbarui profil."
+            );
+            Swal.fire("Gagal!", err.message || "Terjadi kesalahan.", "error");
           } finally {
             setLoading(false);
           }
         }
       });
     },
-    [userId, userData, photo, fetchUserData]
+    [userId, userData, photo, fetchProfileData]
   );
+  // --- (Akhir fungsi-fungsi) ---
 
   return (
+    // --- PERUBAHAN: Menggunakan OperatorTemplate ---
     <OperatorTemplate>
       <div className="flex flex-col mt-20 md:mt-0">
         {/* Header */}
@@ -145,108 +140,140 @@ const OperatorProfile = () => {
             <span className="hidden md:inline">Kembali</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-bold flex-grow text-center md:mr-24 text-[#9500FF] mt-4 md:mt-0">
-            Edit Profil
+            Ubah Profil
           </h1>
         </div>
 
-        {/* Konten Utama */}
-        <div className="flex flex-col md:flex-row items-center justify-center mt-4 md:mt-0">
-          {/* Foto Profil */}
-          <div className="w-full md:w-1/2 flex flex-col items-center justify-center mb-8 md:mb-0 px-4">
-            <Label text="Profile Photo" />
+        {/* Konten Utama & Tata Letak (Sama seperti AdminProfile) */}
+        <div className="flex flex-col md:flex-row items-center justify-center mt-8 md:mt-4 md:p-0">
+          {/* Bagian Foto Profil */}
+          <div className="w-full md:w-1/3 flex flex-col items-center justify-start mb-8 md:mb-0 px-4 md:ml-24">
+            {" "}
+            {/* Sesuaikan ml jika perlu */}
+            <label className="font-bold text-[#9500FF] text-xl mb-4">
+              Foto Profil
+            </label>
             {photoPreview ? (
               <img
                 src={photoPreview}
-                alt="Foto Profil"
-                className="w-32 h-32 md:w-80 md:h-80 rounded-full object-cover mb-4 border-4 border-[#9500FF]"
+                alt="Profile"
+                className="w-48 h-48 rounded-full object-cover mb-4 border-4 border-[#9500FF]"
               />
             ) : (
-              <div className="w-32 h-32 md:w-80 md:h-80 rounded-full bg-gray-200 flex items-center justify-center mb-4">
-                <span className="text-gray-500">Tidak ada foto</span>
+              <div className="w-48 h-48 rounded-full bg-gray-200 flex items-center justify-center mb-4 border-4 border-[#9500FF]">
+                <span className="text-gray-500">No Photo</span>
               </div>
             )}
             <input
+              id="photoInputOperator" // ID unik jika diperlukan
               type="file"
               accept="image/*"
               onChange={handlePhotoChange}
-              className="text-[#9500FF] rounded-md cursor-pointer"
+              className="block w-auto text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 cursor-pointer"
             />
+            {photo && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPhoto(null);
+                  setPhotoPreview(existingPhotoUrl || null);
+                }}
+                className="text-xs text-red-600 hover:underline mt-1 self-center"
+              >
+                Hapus foto dipilih
+              </button>
+            )}
           </div>
 
-          {/* Form Edit Profil */}
-          <div className="w-full md:w-1/2 px-4">
-            <form onSubmit={handleUserUpdate} className="space-y-4">
+          {/* Bagian Form Edit Profil */}
+          <div className="w-full md:w-2/3 px-4">
+            <form
+              onSubmit={handleUserUpdate}
+              className="space-y-4 bg-white p-6 md:p-8 rounded-lg shadow-md"
+            >
+              {/* Username (readonly) */}
               <div className="flex flex-col">
-                <Label text="Username" htmlFor="username" />
-                <Input
+                <Label text="Username" htmlFor="usernameOp" />{" "}
+                {/* ID unik jika perlu */}
+                <input
                   type="text"
-                  id="username"
+                  id="usernameOp"
                   name="username"
                   value={userData.username || ""}
                   onChange={handleInputChange}
-                  className="bg-gray-100"
-                  disabled
+                  className="border rounded-md border-gray-300 px-8 py-3 w-full bg-gray-100 cursor-not-allowed"
+                  readOnly
                   required
                 />
               </div>
+              {/* Email */}
               <div className="flex flex-col">
-                <Label text="Email" htmlFor="email" />
+                <Label text="Email" htmlFor="emailOp" />
                 <Input
                   type="email"
-                  id="email"
+                  id="emailOp"
                   name="email"
+                  placeholder="Masukkan Email"
                   value={userData.email || ""}
                   onChange={handleInputChange}
                   required
                 />
               </div>
+              {/* Nama Lengkap */}
               <div className="flex flex-col">
-                <Label text="Full Name" htmlFor="fullname" />
+                <Label text="Nama Lengkap" htmlFor="fullnameOp" />
                 <Input
                   type="text"
-                  id="fullname"
+                  id="fullnameOp"
                   name="fullname"
+                  placeholder="Masukkan Nama Lengkap"
                   value={userData.fullname || ""}
                   onChange={handleInputChange}
                 />
               </div>
+              {/* Asal */}
               <div className="flex flex-col">
-                <Label text="Asal" htmlFor="asal" />
+                <Label text="Asal" htmlFor="asalOp" />
                 <Input
                   type="text"
-                  id="asal"
+                  id="asalOp"
                   name="asal"
+                  placeholder="Masukkan Asal"
                   value={userData.asal || ""}
                   onChange={handleInputChange}
                 />
               </div>
+              {/* No Telp */}
               <div className="flex flex-col">
-                <Label text="No Telp" htmlFor="no_telp" />
+                <Label text="No Telp" htmlFor="no_telpOp" />
                 <Input
                   type="text"
-                  id="no_telp"
+                  id="no_telpOp"
                   name="no_telp"
+                  placeholder="Masukkan No Telp"
                   value={userData.no_telp || ""}
                   onChange={handleInputChange}
                 />
               </div>
+              {/* Tombol Update */}
               <button
                 type="submit"
-                className="w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md hover:bg-[#7a00cc] cursor-pointer transition duration-200"
+                className="w-full bg-[#9500FF] text-white font-bold p-3 my-6 rounded-md hover:bg-[#7a00cc] transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={loading}
               >
-                {loading ? "Updating..." : "Update Profile"}
+                {loading ? "Menyimpan..." : "Update Profile"}
               </button>
-              {error && <p className="text-red-500 mt-2">{error}</p>}
-              {successMessage && (
-                <p className="text-green-500 mt-2">{successMessage}</p>
+              {error && (
+                <p className="text-red-500 mt-2 text-center">{error}</p>
               )}
             </form>
           </div>
         </div>
       </div>
+      {/* --- PERUBAHAN: Menggunakan OperatorTemplate --- */}
     </OperatorTemplate>
   );
 };
 
+// --- PERUBAHAN: Nama Komponen ---
 export default OperatorProfile;

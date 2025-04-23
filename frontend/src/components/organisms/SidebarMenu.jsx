@@ -33,9 +33,7 @@ const SidebarMenu = ({
     } else if (user_id) {
       const fetchProfilePic = async () => {
         try {
-          const response = await fetch(
-            `https://server-geogudep-bpp.vercel.app/user/${user_id}`
-          );
+          const response = await fetch(`http://localhost:3000/user/${user_id}`);
           const result = await response.json();
           if (response.ok) {
             const path = result?.data?.photo_path;
@@ -85,7 +83,7 @@ const SidebarMenu = ({
     <>
       {/* Sidebar untuk desktop dan tablet */}
       <div
-        className={`hidden md:block fixed top-0 left-0 h-full bg-[#9500FF] shadow-lg p-4 z-[1100] transition-transform duration-300 ${
+        className={`hidden md:block fixed top-0 left-0 h-full bg-[#9500FF] shadow-lg p-4 z-100 transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "-translate-x-[210px]"
         }`}
         style={{ width: "280px" }}
@@ -178,9 +176,9 @@ const SidebarMenu = ({
                     navigate(profilePath); // Navigate to the profile page
                     setIsMobileMenuOpen(false); // Close the mobile menu
                   }}
-                  className="text-sm text-[#9500FF] hover:underline"
+                  className="text-sm text-[#9500FF] hover:underline hover:cursor-pointer"
                 >
-                  Profile
+                  Lihat Profile
                 </button>
               </div>
             </div>

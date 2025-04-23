@@ -1,7 +1,7 @@
 // src/services/EventGudepService.js
 
 // URL dasar API
-const API_URL = "https://server-geogudep-bpp.vercel.app/";
+const API_URL = "http://localhost:3000/";
 
 // Fungsi untuk mengambil semua data prestasi
 export const fetchEventGudeps = async () => {

@@ -72,8 +72,8 @@ const OperatorPrestasi = () => {
       text: "Apakah kamu yakin ingin menghapus prestasi ini?",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
+      confirmButtonColor: "#7a00cc",
+      cancelButtonColor: "#9500FF",
       confirmButtonText: "Ya, hapus!",
       cancelButtonText: "Batal",
     });

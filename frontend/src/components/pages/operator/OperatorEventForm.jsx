@@ -68,8 +68,8 @@ const OperatorEventForm = ({ isEdit }) => {
         : "Apakah Anda yakin ingin menyimpan event baru ini?",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
+      confirmButtonColor: "#7a00cc",
+      cancelButtonColor: "#9500FF",
       confirmButtonText: isEdit ? "Ya, ubah!" : "Ya, simpan!",
       cancelButtonText: "Batal",
     });

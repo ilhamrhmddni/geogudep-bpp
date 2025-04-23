@@ -21,7 +21,7 @@ const SidebarMenuUser = ({
     <>
       {/* Sidebar untuk desktop dan tablet */}
       <div
-        className={`hidden md:block fixed top-0 left-0 h-full bg-[#9500FF] shadow-lg p-4 z-[1100] transition-transform duration-300 ${
+        className={`hidden md:block fixed top-0 left-0 h-full bg-[#9500FF] shadow-lg p-4 z-1200 transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "-translate-x-[210px]"
         }`}
         style={{ width: "280px" }}

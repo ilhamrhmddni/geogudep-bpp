@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { deleteKwarran, fetchKwarran } from "../../../services/KwarranService";
+import AdminHeader from "../../atoms/AdminHeader";
 import ErrorMessage from "../../atoms/ErrorMessage";
 import LoadingSpinner from "../../atoms/LoadingSpinner";
 import NoDataMessage from "../../atoms/NoDataMessage";
 import TableCRUD from "../../moleculs/TableCRUD";
 import AdminTemplate from "../../templates/AdminTemplate";
-import AdminHeader from "../../atoms/AdminHeader";
 
 const AdminKwarran = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,7 +64,7 @@ const AdminKwarran = () => {
         text: "Anda yakin ingin menghapus data ini?",
         icon: "warning",
         showCancelButton: true,
-        confirmButtonColor: "#d33",
+        confirmButtonColor: "#7a00cc",
         cancelButtonColor: "#9500FF",
         confirmButtonText: "Ya, Hapus!",
         cancelButtonText: "Batal",

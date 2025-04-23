@@ -1,80 +1,81 @@
+// src/components/moleculs/TableCRUD.jsx
 import React from "react";
 
-// Komponen TableCRUD menerima props: headers (kolom tabel), data (data untuk ditampilkan),
-// onEdit (fungsi untuk mengedit data), dan onDelete (fungsi untuk menghapus data).
+// Komponen TableCRUD dikembalikan ke cara kerja umum:
+// onEdit(item) -> menerima seluruh objek data baris
+// onDelete(id) -> menerima ID dari item baris
 const TableCRUD = ({ headers, data, onEdit, onDelete }) => {
   return (
     <div className="overflow-x-auto">
-      {/* Table Area */}
       <table className="min-w-full table-auto mt-4">
         <thead>
           <tr>
-            {/* Render header tabel berdasarkan array headers */}
             {headers.map((header) => (
-              <th key={header.key} className={`${header.width} px-4 py-2`}>
-                {header.label} {/* Label header */}
+              <th
+                key={header.key}
+                className={`${header.width || ""} px-4 py-2`}
+              >
+                {" "}
+                {/* Tambah default width */}
+                {header.label}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {/* Jika data tersedia, render baris data */}
           {data.length > 0 ? (
             data.map((item) => (
-              // Gunakan properti unik sebagai key, fallback ke index jika tidak ada ID/kode yang stabil
-              <tr key={item.id || item.kode || data.indexOf(item)}>
+              // Gunakan item.id sebagai key jika ADA, fallback ke index
+              // Pastikan data yang DIKIRIM ke TableCRUD SELALU punya 'id'
+              <tr key={item?.id ?? data.indexOf(item)}>
                 {headers.map((header) => (
                   <td
-                    key={`${item.id}-${header.key}`} // Key unik untuk setiap sel
+                    key={`${item?.id}-${header.key}`}
                     className="border border-none px-2 py-1 text-center"
                   >
-                    {/* Render nomor urut jika key adalah "no" */}
-                    {header.key === "no" ? (
-                      data.indexOf(item) + 1
-                    ) : header.key === "actions" ? (
-                      // Render tombol edit dan delete jika key adalah "actions"
+                    {header.key === "actions" ? (
                       <div className="flex items-center justify-center">
+                        {/* Tombol Edit: Panggil onEdit dengan seluruh item baris */}
                         <button
-                          onClick={() => onEdit(item)} // Panggil fungsi edit
+                          onClick={() => onEdit(item)} // <-- KEMBALIKAN KE onEdit(item)
                           className="text-blue-500 mr-2"
+                          aria-label="Edit"
                         >
-                          <span className="material-icons cursor-pointer">
+                          <span
+                            className="material-icons cursor-pointer"
+                            style={{ fontSize: "1.25rem" }}
+                          >
                             edit
                           </span>
                         </button>
+                        {/* Tombol Delete: Panggil onDelete dengan ID item */}
                         <button
-                          onClick={() => onDelete(item.id)} // Panggil fungsi delete
+                          onClick={() => onDelete(item.id)} // <-- Tetap onDelete(item.id)
                           className="text-red-500"
+                          aria-label="Hapus"
                         >
-                          <span className="material-icons cursor-pointer">
+                          <span
+                            className="material-icons cursor-pointer"
+                            style={{ fontSize: "1.25rem" }}
+                          >
                             delete
                           </span>
                         </button>
                       </div>
                     ) : Array.isArray(item[header.key]) ? (
-                      // Render slider jika data adalah array
                       <div className="overflow-x-auto">
-                        <div className="flex space-x-4">
-                          {item[header.key].map((content, index) => (
-                            <div
-                              key={index}
-                              className="min-w-[100px] bg-gray-100 p-2 rounded shadow"
-                            >
-                              {content}
-                            </div>
-                          ))}
-                        </div>
+                        {" "}
+                        {/* ... slider ... */}{" "}
                       </div>
                     ) : (
-                      // Render data berdasarkan key header, fallback ke "-" jika data kosong
-                      item[header.key] || "-"
+                      // Render data sel biasa
+                      item[header.key] ?? "-"
                     )}
                   </td>
                 ))}
               </tr>
             ))
           ) : (
-            // Jika data kosong, tampilkan pesan "Data tidak ditemukan"
             <tr>
               <td colSpan={headers.length} className="text-center py-4">
                 Data tidak ditemukan

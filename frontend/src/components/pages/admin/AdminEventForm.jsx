@@ -99,8 +99,8 @@ const AdminEventForm = ({ isEdit }) => {
         : "Apakah kamu yakin ingin menyimpan event baru ini?",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#9500FF",
-      cancelButtonColor: "#d33",
+      confirmButtonColor: "#7a00cc",
+      cancelButtonColor: "#9500FF",
       confirmButtonText: "Ya, lanjutkan!",
       cancelButtonText: "Batal",
     });

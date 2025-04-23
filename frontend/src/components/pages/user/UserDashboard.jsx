@@ -19,10 +19,10 @@ const UserDashboard = () => {
 
   return (
     <UserTemplate>
-      <div className="flex flex-col md:ml-18 mt-20 md:mt-0">
+      <div className="flex flex-col md:ml-18 mt-4 md:mt-16">
         {/* Hero Section */}
         <div
-          className="flex-1 p-6 md:p-12 flex flex-col items-center justify-center rounded-lg shadow-xl overflow-hidden relative"
+          className="flex-1 p-6 md:p-12 flex flex-col items-center justify-center rounded-lg shadow-xl overflow-hidden relative md:mt-8"
           style={{
             background: `linear-gradient(to bottom right, ${primaryColor}, ${secondaryColor})`,
             color: "white",
@@ -34,7 +34,7 @@ const UserDashboard = () => {
             alt="Peta Digital Balikpapan"
             className="absolute inset-0 w-full h-full object-cover opacity-30"
           />
-          <div className="relative z-10 text-center">
+          <div className="relative z-120 text-center">
             <h1 className="text-3xl md:text-5xl font-bold mb-4">
               Sistem Informasi Geografis
             </h1>

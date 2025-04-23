@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { deleteUser, fetchUsers } from "../../../services/OperatorService";
+import AdminHeader from "../../atoms/AdminHeader"; // Import the new component
 import ErrorMessage from "../../atoms/ErrorMessage";
 import LoadingSpinner from "../../atoms/LoadingSpinner";
 import NoDataMessage from "../../atoms/NoDataMessage";
 import TableCRUD from "../../moleculs/TableCRUD";
 import AdminTemplate from "../../templates/AdminTemplate";
-import AdminHeader from "../../atoms/AdminHeader"; // Import the new component
 
 const AdminOperator = () => {
   // State untuk menyimpan query pencarian, data operator, status loading, dan error
@@ -42,7 +42,7 @@ const AdminOperator = () => {
       { key: "no", label: "No", width: "w-1/12" },
       { key: "username", label: "Username", width: "w-2/12" },
       { key: "email", label: "Email", width: "w-2/12" },
-      { key: "fullname", label: "Full Name", width: "w-3/12" },
+      { key: "fullname", label: "Nama Lengkap", width: "w-3/12" },
       { key: "asal", label: "Asal", width: "w-2/12" },
       { key: "no_telp", label: "No. Telepon", width: "w-2/12" },
       { key: "actions", label: "Aksi", width: "w-2/12" },
@@ -76,7 +76,7 @@ const AdminOperator = () => {
         text: "Tindakan ini tidak dapat dibatalkan!",
         icon: "warning",
         showCancelButton: true,
-        confirmButtonColor: "#d33",
+        confirmButtonColor: "#7a00cc",
         cancelButtonColor: "#9500FF",
         confirmButtonText: "Ya, Hapus",
         cancelButtonText: "Batal",

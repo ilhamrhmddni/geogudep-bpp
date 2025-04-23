@@ -75,8 +75,8 @@ const OperatorGugusdepan = () => {
       text: "Apakah Anda yakin ingin menyimpan data ini?",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
+      confirmButtonColor: "#7a00cc",
+      cancelButtonColor: "#9500FF",
       confirmButtonText: "Ya, simpan!",
       cancelButtonText: "Batal",
     }).then(async (result) => {
