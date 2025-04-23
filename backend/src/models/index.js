@@ -59,16 +59,6 @@ db.Gudep.hasMany(db.Event, {
   as: "eventes",
 });
 
-// **Gudep and Laporan (One-to-Many)**
-db.Gudep.hasMany(db.Laporan, {
-  foreignKey: "gudep_id",
-  as: "laporanes",
-});
-db.Laporan.belongsTo(db.Gudep, {
-  foreignKey: "gudep_id",
-  as: "gudepes",
-});
-
 // ✅ Hooks
 // **Event and Prestasi (One-to-Many)**
 db.Event.hasMany(db.Prestasi, { foreignKey: "event_id", as: "prestasies" });

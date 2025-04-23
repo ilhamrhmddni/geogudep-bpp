@@ -1,11 +1,10 @@
-// src/routes/data-route.js
+// src/routes/data-route.js (SUDAH BENAR untuk tujuannya)
 const express = require("express");
 const router = express.Router();
-const dataController = require("../controllers/data-controller"); // Adjust the path as necessary
+// Asumsikan dataController berisi fetchAllDataAndGeneratePDF, fetchDataById, fetchKwarranById
+const dataController = require("../controllers/data-controller"); // Atau DataController
 
-// Define the route to fetch all data and generate PDF
-router.get("/all", dataController.fetchAllDataAndGeneratePDF); // Ensure this function is defined in your controller
-// Define other routes as needed
+router.get("/all", dataController.fetchAllDataAndGeneratePDF);
 router.get("/gudep/:id", dataController.fetchDataById);
 router.get("/kwarran/:id", dataController.fetchKwarranById);
 
