@@ -1,5 +1,5 @@
 // URL dasar API (sesuaikan jika perlu)
-const API_URL = "http://localhost:3000/";
+const API_URL = "https://server-geogudep-bpp.vercel.app/";
 
 // Mengambil data profil pengguna berdasarkan ID
 export const fetchProfile = async (userId) => {

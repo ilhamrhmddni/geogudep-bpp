@@ -1,7 +1,7 @@
 // src/services/GeografisService.js
 
 // URL dasar API
-const API_URL = "http://localhost:3000/";
+const API_URL = "https://server-geogudep-bpp.vercel.app/";
 
 // Fungsi untuk mengambil semua data geografis
 export const fetchGeografis = async () => {

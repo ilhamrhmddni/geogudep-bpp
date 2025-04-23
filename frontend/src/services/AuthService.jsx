@@ -1,6 +1,6 @@
 // src/services/AuthService.js
 
-const API_URL = "http://localhost:3000/"; // Base URL untuk API
+const API_URL = "https://server-geogudep-bpp.vercel.app/"; // Base URL untuk API
 
 // Fungsi untuk login pengguna
 export const login = async (username, password) => {
