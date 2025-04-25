@@ -53,12 +53,10 @@ const Laporan = sequelize.define(
     status: {
       type: DataTypes.ENUM(
         "Menunggu",
-        "Setujui", // Tambahkan jika Anda pakai status ini
-        "Siap Kirim", // Status setelah PDF dibuat
-        "Kirim", // Status setelah email coba dikirim (opsional)
+        "Setujui",
+        "Siap Kirim",
         "Selesai",
-        "Error Generate", // Status jika PDF gagal dibuat
-        "Error Kirim" // Status jika email gagal dikirim
+        "Error Generate"
       ),
       allowNull: false,
       defaultValue: "Menunggu",
