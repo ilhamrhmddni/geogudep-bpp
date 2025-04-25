@@ -1,7 +1,7 @@
 {
   "type": "Feature",
   "properties": {
-    "kecamatan": "Selatan",
+    "nama": "Selatan",
     "fill": "#a600ff"
   },
   "geometry": {

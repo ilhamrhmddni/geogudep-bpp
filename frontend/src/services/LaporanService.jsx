@@ -88,11 +88,6 @@ export const createLaporan = async (data) => {
   }
 };
 
-// Fungsi untuk mengedit status laporan menjadi "selesai" (atau status lain)
-// Mungkin lebih fleksibel jika menerima status sebagai argumen?
-// export const editLaporanStatus = async (id, newStatus) => {
-// src/services/LaporanService.js (Fungsi yang diperbaiki)
-
 export const approveAndGenerateLaporan = async (id) => {
   try {
     if (!id || id === "undefined") throw new Error("ID Laporan tidak valid.");
@@ -116,31 +111,6 @@ export const approveAndGenerateLaporan = async (id) => {
     return await response.json();
   } catch (error) {
     console.error("Error approving/generating report:", error);
-    throw error;
-  }
-};
-
-// Fungsi untuk Kirim Email
-export const sendLaporanEmail = async (id) => {
-  try {
-    if (!id || id === "undefined") throw new Error("ID Laporan tidak valid.");
-    console.log(`SERVICE: Triggering email send for Laporan ID: ${id}`);
-    const response = await fetch(`${API_URL}laporan/${id}/send-email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!response.ok) {
-      let errorData;
-      try {
-        errorData = await response.json();
-      } catch (e) {}
-      if (response.status === 404)
-        throw new Error(errorData?.message || "Laporan tidak ditemukan.");
-      throw new Error(errorData?.message || "Gagal mengirim email laporan.");
-    }
-    return await response.json();
-  } catch (error) {
-    console.error("Error sending report email:", error);
     throw error;
   }
 };

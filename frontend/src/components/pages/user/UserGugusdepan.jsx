@@ -147,7 +147,7 @@ const FlyToUserLocation = () => {
 
     const handleLocationFound = (e) => {
       setUserLocation(e.latlng);
-      map.flyTo(e.latlng, 13, { duration: 3 });
+      map.flyTo(e.latlng, 13, { duration: 1 });
     };
 
     map.on("locationfound", handleLocationFound);
@@ -291,23 +291,13 @@ const UserGugusdepan = () => {
     return matchedGudep !== undefined;
   });
 
-  // Style untuk GeoJSON berdasarkan kwarran
-  // Style untuk GeoJSON berdasarkan kwarran
   const geoJSONStyle = (feature) => {
     const kwarranName = feature.properties?.nama; // Nama dari data GeoJSON
     const originalColor = kwarranColors[kwarranName] || "#9500FF";
     const inactiveColor = "#AAAAAA";
 
-    // --- DEBUG LOG AWAL ---
-    // Cetak nama dari GeoJSON dan state selectedKwarran saat ini
-    console.log(
-      `--- Styling --- GeoJSON Name: "<span class="math-inline">\{kwarranName\}" \| Selected State\: "</span>{selectedKwarran}"`
-    );
-    // --- END DEBUG LOG ---
-
     if (selectedKwarran && kwarranName === selectedKwarran) {
       // --- DEBUG LOG MATCH ---
-      console.log(`   ✅ MATCH! Applying HIGHLIGHT style for "${kwarranName}"`);
       // --- END DEBUG LOG ---
       return {
         fillColor: originalColor,
@@ -317,11 +307,6 @@ const UserGugusdepan = () => {
         fillOpacity: 0.6,
       };
     } else if (selectedKwarran && kwarranName !== selectedKwarran) {
-      // --- DEBUG LOG NO MATCH (Filter Active) ---
-      console.log(
-        `   ❌ No Match (Filter Active). Applying INACTIVE style for "${kwarranName}"`
-      );
-      // --- END DEBUG LOG ---
       return {
         fillColor: inactiveColor,
         weight: 1,
@@ -330,12 +315,6 @@ const UserGugusdepan = () => {
         fillOpacity: 0.5,
       };
     } else {
-      // Default: !selectedKwarran
-      // --- DEBUG LOG DEFAULT ---
-      console.log(
-        `   -- No Filter. Applying DEFAULT style for "${kwarranName}"`
-      );
-      // --- END DEBUG LOG ---
       return {
         fillColor: originalColor,
         weight: 2,
@@ -346,36 +325,38 @@ const UserGugusdepan = () => {
     }
   };
 
-  // Event handlers untuk GeoJSON
+  // Event handlers untuk GeoJSON (Final: Gunakan 'nama', trim, dan toLowerCase, tanpa log)
   const onEachFeature = (feature, layer) => {
-    console.log("Processing feature:", feature); // Log untuk melihat fitur yang sedang diproses
-
     if (feature.properties && feature.properties.nama) {
-      const kwarranName = feature.properties.nama;
+      const kwarranNameFromGeoJSON = feature.properties.nama;
 
-      // Hitung jumlah gudep di kwarran ini
       const gudepInKwarran = gugusdepanData.filter((gudep) => {
         const kwarran = kwarranData.find((k) => k.id === gudep.kwarran_id);
-        return kwarran && kwarran.nama === kwarranName;
+        const kwarranNameFromDb = kwarran?.nama;
+        const match =
+          kwarran &&
+          kwarranNameFromDb?.trim().toLowerCase() ===
+            kwarranNameFromGeoJSON?.trim().toLowerCase();
+        return match;
       });
 
-      // Hitung jumlah untuk setiap tingkatan
       const siagaCount = gudepInKwarran.filter(
-        (g) => g.tingkatan === "Siaga"
+        (g) => g.tingkatan?.trim().toLowerCase() === "siaga"
       ).length;
       const penggalangCount = gudepInKwarran.filter(
-        (g) => g.tingkatan === "Penggalang"
+        (g) => g.tingkatan?.trim().toLowerCase() === "penggalang"
       ).length;
-      const penegakCount = gudepInKwarran.filter(
-        (g) => g.tingkatan === "Penegak/Pandega"
-      ).length;
+      const penegakCount = gudepInKwarran.filter((g) => {
+        const tingkatan = g.tingkatan?.trim().toLowerCase();
+        return tingkatan === "penegak/pandega" || tingkatan === "penegak";
+      }).length;
       const pandegaCount = gudepInKwarran.filter(
-        (g) => g.tingkatan === "Pandega"
+        (g) => g.tingkatan?.trim().toLowerCase() === "pandega"
       ).length;
 
       layer.bindPopup(`
       <div class="">
-        <h3 class="font-bold text-lg">Kwarran ${kwarranName}</h3>
+        <h3 class="font-bold text-lg">Kwarran ${kwarranNameFromGeoJSON}</h3>
         <span><strong>Total Gudep:</strong> ${gudepInKwarran.length}</span><br/>
         <span><strong>Siaga:</strong> ${siagaCount}</span><br/>
         <span><strong>Penggalang:</strong> ${penggalangCount}</span><br/>
@@ -384,23 +365,14 @@ const UserGugusdepan = () => {
       </div>
     `);
 
-      // Hapus event handlers untuk hover
       layer.on({
         click: (e) => {
-          console.log(
-            `--- CLICK EVENT --- Feature Name Found: "${kwarranName}"`
-          );
-          console.log(`   Setting selectedKwarran state to: "${kwarranName}"`);
-          // Set filter ke kwarran yang diklik
-          setSelectedKwarran(kwarranName);
+          setSelectedKwarran(kwarranNameFromGeoJSON);
         },
       });
+    } else {
+      // console.warn("Feature processed without 'nama' property:", feature.properties); // Log ini bisa dihapus juga
     }
-  };
-
-  // Toggle untuk menampilkan/menyembunyikan GeoJSON
-  const toggleGeoJSON = () => {
-    setShowGeoJSON(!showGeoJSON);
   };
 
   // Bulan legenda kwarran

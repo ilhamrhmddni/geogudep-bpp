@@ -12,7 +12,6 @@ import {
   approveAndGenerateLaporan, // <-- Service baru
   deleteLaporan,
   fetchLaporan, // <-- Service baru
-  sendLaporanEmail, // <-- Service baru
 } from "../../../services/LaporanService";
 
 // Import komponen UI - Pastikan semua path benar
@@ -112,38 +111,6 @@ const AdminLaporanGudep = () => {
         fetchData();
       } catch (err) {
         Swal.fire("Gagal!", err.message || "Gagal memproses laporan.", "error");
-      } finally {
-        setActionLoading((prev) => ({ ...prev, [id]: false }));
-      }
-    },
-    [fetchData]
-  );
-
-  const handleSendEmail = useCallback(
-    async (id) => {
-      console.log("FE: Triggering Send Email for ID:", id);
-      if (!id) return;
-      setActionLoading((prev) => ({ ...prev, [id]: true }));
-      Swal.fire({
-        title: "Mengirim Email...",
-        text: "Mohon tunggu...",
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
-      });
-      try {
-        const result = await sendLaporanEmail(id);
-        Swal.fire(
-          "Sukses!",
-          result.message || "Email laporan berhasil dikirim.",
-          "success"
-        );
-        fetchData();
-      } catch (err) {
-        Swal.fire(
-          "Gagal!",
-          err.message || "Gagal mengirim email laporan.",
-          "error"
-        );
       } finally {
         setActionLoading((prev) => ({ ...prev, [id]: false }));
       }
@@ -280,33 +247,31 @@ const AdminLaporanGudep = () => {
           </button>
         );
       } else if (item.status === "Siap Kirim") {
+        // Hanya tombol Download PDF
         if (item.pdf_path) {
           actionButtons.push(
             <a
-              key="view"
-              href={`/reports/${item.pdf_path}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded text-xs"
-              title="Lihat PDF"
+              key="download" // Ubah key jika mau (opsional)
+              href={`/reports/${item.pdf_path}`} // Pastikan path ini benar
+              download={item.pdf_path || true} // TAMBAHKAN atribut download
+              className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded text-xs" // Ubah warna jika mau (misal: hijau)
+              title="Download PDF" // Ubah title
             >
-              {" "}
-              Lihat{" "}
+              Download {/* UBAH teks tombol */}
             </a>
           );
+        } else {
+          actionButtons.push(
+            <span
+              key="pdf-wait"
+              className="text-gray-500 text-xs italic px-2 py-1"
+            >
+              PDF belum siap
+            </span>
+          );
         }
-        actionButtons.push(
-          <button
-            key="send"
-            onClick={() => handleSendEmail(item.id)}
-            className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded text-xs disabled:opacity-50"
-            disabled={isLoading}
-            title="Kirim Laporan via Email"
-          >
-            {" "}
-            {isLoading ? "Mengirim..." : "Kirim Email"}{" "}
-          </button>
-        );
+        // Tombol Kirim Email sudah dihapus
+        // ... (kode sebelumnya)
       } else if (item.status === "Selesai") {
         actionButtons.push(
           <span
@@ -319,21 +284,18 @@ const AdminLaporanGudep = () => {
         if (item.pdf_path) {
           actionButtons.push(
             <a
-              key="view-done"
-              href={`/reports/${item.pdf_path}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-1 text-blue-500 hover:text-blue-700 text-xs"
-              title="Lihat PDF"
+              key="view-done" // Bisa diganti key jika mau (opsional)
+              href={`/reports/${item.pdf_path}`} // Pastikan path ini benar
+              download={item.pdf_path || true} // TAMBAHKAN atribut download
+              className="ml-1 text-green-600 hover:text-green-800 text-xs" // Ubah warna jika mau
+              title="Download PDF" // Ubah title
             >
-              (Lihat)
+              (Download) {/* UBAH teks link */}
             </a>
           );
         }
-      } else if (
-        item.status === "Error Generate" ||
-        item.status === "Error Kirim"
-      ) {
+      } else if (item.status === "Error Generate") {
+        // ... (kode selanjutnya)
         actionButtons.push(
           <span
             key="status"
@@ -430,7 +392,6 @@ const AdminLaporanGudep = () => {
     filteredData,
     actionLoading,
     handleApproveGenerate,
-    handleSendEmail,
     handleDelete,
     kwarranMap,
     gudepMap,
