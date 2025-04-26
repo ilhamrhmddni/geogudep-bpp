@@ -20,9 +20,7 @@ const Header = () => {
       }
 
       try {
-        const response = await fetch(
-          `https://server-geogudep-bpp.vercel.app/user/${user_id}`
-        );
+        const response = await fetch(`http://localhost:3000/user/${user_id}`);
         const result = await response.json();
 
         if (response.ok) {
@@ -55,7 +53,7 @@ const Header = () => {
     <header className="hidden md:flex bg-white text-[#9500FF] p-4 items-center justify-between shadow-md">
       {/* Bagian kiri header */}
       <div className="text-xl font-bold truncate md:ml-20">
-        Sistem Informasi Geografis Pemetaan Gugus Depan
+        Sistem Informasi Geografis Pemetaan Gugus Depan Kota Balikpapan
       </div>
 
       {/* Bagian kanan header */}

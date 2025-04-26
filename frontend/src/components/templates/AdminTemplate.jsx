@@ -48,7 +48,7 @@ const AdminTemplate = ({ children }) => {
       />
       <div
         className={`transition-all duration-300 w-full ${
-          isOpen ? "ml-[210px]" : ""
+          isOpen ? "md:ml-[210px]" : ""
         }`}
       >
         {/* Header untuk menampilkan judul halaman */}

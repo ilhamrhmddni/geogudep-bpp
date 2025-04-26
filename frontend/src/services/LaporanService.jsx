@@ -1,7 +1,7 @@
 // src/services/LaporanService.js (Pastikan path sesuai)
 
 // URL dasar API
-const API_URL = "https://server-geogudep-bpp.vercel.app/"; // Pastikan URL backend benar
+const API_URL = "http://localhost:3000/"; // Pastikan URL backend benar
 
 // Fungsi untuk mengambil semua data laporan
 export const fetchLaporan = async () => {
