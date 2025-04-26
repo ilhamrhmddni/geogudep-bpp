@@ -1,90 +1,89 @@
+// --- Imports ---
 const express = require("express");
 const cors = require("cors");
-const morgan = require("morgan");
 const multer = require("multer");
 const axios = require("axios");
 require("dotenv").config();
 const db = require("./src/models");
 const sequelize = require("./config/db");
 
+// --- Initializations ---
 const app = express();
 const rootRoutes = require("./src/routes");
 
-// 🛠 Middleware
-app.use(cors()); // Mengaktifkan CORS
-app.use(express.json()); // Parsing JSON request body
+// --- Global Middleware ---
+app.use(cors());
+app.use(express.json());
 
-// Konfigurasi multer untuk upload file
-const storage = multer.memoryStorage();
+// --- File Upload Configuration (Multer) ---
+const storage = multer.memoryStorage(); // Simpan file di memori
 const upload = multer({ storage: storage });
 
-// Custom middleware untuk Imgur upload
+// --- Custom Middleware: Imgur Upload ---
 const uploadToImgur = async (req, res, next) => {
   if (req.file) {
     try {
       const imgurUpload = await axios({
         method: "post",
-        url: "https://api.imgur.com/oauth2/authorize",
+        url: "https://api.imgur.com/3/image", // Imgur API endpoint for image upload
         headers: {
           Authorization: `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
         },
         data: req.file.buffer,
       });
-      req.imgurLink = imgurUpload.data.data.link; // Menyimpan link Imgur di request
+      // Simpan link Imgur ke request object
+      req.imgurLink = imgurUpload.data.data.link;
+      next(); // Lanjut HANYA jika upload berhasil
     } catch (error) {
-      console.error("Error uploading to Imgur:", error);
-      return res
-        .status(500)
-        .json({ message: "Gagal mengunggah foto ke Imgur" });
+      const errorMessage = error.response?.data?.data?.error || error.message;
+      console.error("❌ Error uploading to Imgur:", errorMessage);
+      // Format error response konsisten dengan global handler
+      res.status(500).json({
+        message: "Gagal mengunggah foto ke Imgur",
+        error: errorMessage,
+      });
+      // Jangan panggil next() jika error
     }
-  }
-  next();
-};
-
-// 🛠 Routes
-// Sebelum menggunakan rootRoutes, tambahkan middleware untuk upload ke Imgur
-app.use(
-  "/api/profile/update/:userId",
-  upload.single("photo"),
-  uploadToImgur,
-  (req, res, next) => {
-    // Setelah upload ke Imgur selesai, lanjutkan ke rootRoutes
+  } else {
+    // Jika tidak ada file, langsung lanjut
     next();
   }
-);
+};
+
+// --- Route-Specific Middleware (Imgur Upload Trigger) ---
+// Middleware ini akan dijalankan untuk route yang cocok dengan " /:userId"
+// PERHATIAN: Ada spasi " /:userId"
+app.use(" /:userId", upload.single("photo"), uploadToImgur); // Hapus middleware inline terakhir karena uploadToImgur sudah memanggil next()
+
+// --- Main Routes ---
 app.use(rootRoutes);
 
-// 🛠 Error Handling Global
+// --- Global Error Handling ---
 app.use((err, req, res, next) => {
-  console.error("❌ Error:", err.stack);
+  console.error("❌ Unhandled Error:", err.stack);
   res
     .status(500)
-    .json({ message: "Terjadi kesalahan server", error: err.message });
+    .json({ message: "Terjadi kesalahan pada server", error: err.message });
 });
 
-const port = process.env.PORT || 3000; // Gunakan process.env.PORT jika tersedia
+// --- Server Configuration & Startup ---
+const port = process.env.PORT || 3000;
 
-// 🛠 Cek Koneksi Database & Jalankan Server
 (async () => {
   try {
+    // Autentikasi koneksi database (menggunakan kedua instance jika diperlukan)
     await sequelize.authenticate();
-    db.sequelize
-      .authenticate()
-      .then(() => {
-        console.log("✅ Database connected!");
-        app.listen(port, () =>
-          console.log(`🚀 Server running on port ${port}`)
-        );
-      })
-      .catch((err) => {
-        console.error("❌ Database connection error:", err.message);
-        console.error("❌ Error details:", err); // Debugging: detail error
-        process.exit(1); // Keluar jika koneksi database gagal
-      });
+    await db.sequelize.authenticate();
+    console.log("✅ Database connected!");
+
+    // Jalankan server
+    app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
   } catch (error) {
     console.error("❌ Failed to start the application:", error.message);
-    process.exit(1);
+    console.error("❌ Error details:", error); // Detail error penting saat startup gagal
+    process.exit(1); // Keluar dari aplikasi jika startup gagal
   }
 })();
 
+// --- Exports ---
 module.exports = app;
