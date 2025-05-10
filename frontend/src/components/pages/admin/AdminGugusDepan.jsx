@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Swal from "sweetalert2"; // Import SweetAlert2 for notifications
 import { fetchGugusdepan } from "../../../services/GugusdepanService";
 import { fetchKwarran } from "../../../services/KwarranService";
+import { generateDirectPdfReport } from "../../../services/LaporanService";
 import AdminHeader from "../../atoms/AdminHeader";
-// Pastikan path import ini mengarah ke DetailCell versi TERBARU (portal, button trigger)
 import DetailCell from "../../atoms/DetailCell";
 import Dropdown from "../../atoms/Dropdown";
 import ErrorMessage from "../../atoms/ErrorMessage";
@@ -13,7 +14,6 @@ import TableR from "../../moleculs/TableR";
 import AdminTemplate from "../../templates/AdminTemplate";
 
 const AdminGugusdepan = () => {
-  // State (tidak ada perubahan di sini)
   const [searchQuery, setSearchQuery] = useState("");
   const [data, setData] = useState([]);
   const [kwarranList, setKwarranList] = useState([]);
@@ -22,7 +22,9 @@ const AdminGugusdepan = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // fetchInitialData (tidak ada perubahan di sini)
+  // State for PDF generation
+  const [pdfLoadingId, setPdfLoadingId] = useState(null);
+
   const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
@@ -43,12 +45,10 @@ const AdminGugusdepan = () => {
     }
   }, []);
 
-  // useEffect untuk fetchInitialData (tidak ada perubahan di sini)
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
 
-  // Headers (tidak ada perubahan di sini)
   const headers = useMemo(
     () => [
       { key: "no", label: "No", width: "w-1/20" },
@@ -61,11 +61,11 @@ const AdminGugusdepan = () => {
       { key: "email", label: "Email", width: "w-3/20" },
       { key: "detail", label: "Detail", width: "w-1/20" },
       { key: "tahun_update", label: "Tanggal Update", width: "w-1/20" },
+      { key: "actions", label: "Download", width: "w-1/20" }, // Add actions column
     ],
     []
   );
 
-  // Handlers (handleSearchChange, handleKwarranChange, handleTingkatanChange - tidak ada perubahan)
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
   }, []);
@@ -76,11 +76,9 @@ const AdminGugusdepan = () => {
     setSelectedTingkatan(value);
   }, []);
 
-  // Filter dan Map data - BAGIAN INI DIUBAH
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase();
 
-    // 1. Filter data terlebih dahulu
     const intermediateData =
       data?.filter((item) => {
         const searchMatch =
@@ -102,57 +100,80 @@ const AdminGugusdepan = () => {
           searchMatch &&
           kwarranMatch &&
           tingkatanMatch &&
-          item.useres?.role !== "admin" // Pastikan filter role tetap ada jika diperlukan
+          item.useres?.role !== "admin"
         );
-      }) || []; // Pastikan hasilnya selalu array
+      }) || [];
 
-    // Dapatkan jumlah total baris SETELAH difilter
     const totalRows = intermediateData.length;
-    // Tentukan berapa baris terakhir yang dianggap 'dekat bawah'
-    const threshold = 2; // Misalnya, 2 baris terakhir
+    const threshold = 2;
 
-    // 2. Map data yang sudah difilter untuk menambahkan properti dan DetailCell
     return intermediateData.map((item, index) => {
-      // Hitung apakah baris ini dekat dengan bagian bawah
       const isNearBottom = index >= totalRows - threshold;
-      // Tentukan nilai prop 'position' berdasarkan isNearBottom
       const positionValue = isNearBottom ? "top" : "bottom";
 
-      // Kembalikan objek item yang sudah dimodifikasi
       return {
-        ...item, // Sertakan semua properti asli item
-        no: index + 1, // Hitung nomor urut berdasarkan indeks setelah filter
+        ...item,
+        no: index + 1,
         kwarran_nama:
           kwarranList.find((k) => k.id === item.kwarran_id)?.nama || "-",
-        tahun_update: FormatDate(item.tahun_update), // Format tanggal
-        // Gunakan DetailCell untuk kolom 'jumlah'
+        tahun_update: FormatDate(item.tahun_update),
         jumlah: (
           <DetailCell
-            title="Lihat" // Teks untuk tombol trigger
+            title="Lihat"
             details={[
               { label: "Putra", value: item.jumlah_putra },
               { label: "Putri", value: item.jumlah_putri },
             ]}
-            position={positionValue} // << Kirim prop posisi
+            position={positionValue}
           />
         ),
-        // Gunakan DetailCell untuk kolom 'detail'
         detail: (
           <DetailCell
-            title="Lihat" // Teks untuk tombol trigger
+            title="Lihat"
             details={[
               { label: "Mabigus", value: item.mabigus },
               { label: "Pembina", value: item.pembina },
               { label: "Pelatih", value: item.pelatih },
             ]}
-            position={positionValue} // << Kirim prop posisi
+            position={positionValue}
           />
+        ),
+        actions: (
+          <button
+            onClick={() => handleDownloadPdf(item.id)}
+            className="material-icons color-[#9500FF] bg-[#9500FF] p-1 rounded-md text-white align-middle hover:bg-[#7a00cc]"
+            disabled={pdfLoadingId === item.id}
+          >
+            {pdfLoadingId === item.id ? "..." : "download"}
+          </button>
         ),
       };
     });
-  }, [data, searchQuery, selectedKwarran, selectedTingkatan, kwarranList]); // Dependencies useMemo tetap sama
+  }, [
+    data,
+    searchQuery,
+    selectedKwarran,
+    selectedTingkatan,
+    kwarranList,
+    pdfLoadingId,
+  ]);
 
-  // FilterDropdowns (tidak ada perubahan di sini)
+  const handleDownloadPdf = async (targetId) => {
+    setPdfLoadingId(targetId);
+    try {
+      await generateDirectPdfReport({
+        level: "gudep",
+        targetId,
+      });
+      Swal.fire("Berhasil", "PDF berhasil diunduh!", "success");
+    } catch (err) {
+      console.error("❌ Gagal download PDF:", err);
+      Swal.fire("Gagal", "Gagal mengunduh PDF.", "error");
+    } finally {
+      setPdfLoadingId(null);
+    }
+  };
+
   const FilterDropdowns = (
     <div className="hidden md:flex gap-2">
       <Dropdown
@@ -175,7 +196,6 @@ const AdminGugusdepan = () => {
     </div>
   );
 
-  // Return statement JSX (tidak ada perubahan di sini)
   return (
     <AdminTemplate>
       <div className="md:ml-18 rounded-xl shadow-xl mt-10 md:mt-0">

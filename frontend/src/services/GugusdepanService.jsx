@@ -1,4 +1,4 @@
-const API_URL = "https://server-geogudep-bpp.vercel.app/"; // URL dasar API
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Fungsi untuk mengedit data Gugusdepan berdasarkan ID
 export const editGugusdepan = async (id, item) => {

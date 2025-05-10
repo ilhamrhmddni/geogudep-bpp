@@ -19,6 +19,7 @@ const SidebarMenu = ({
   const [role, setRole] = useState("");
   const [isImageError, setIsImageError] = useState(false);
 
+  const API_URL = import.meta.env.VITE_API_URL;
   // Decode token to get user information
   useEffect(() => {
     const decodedToken = decodeToken();
@@ -33,9 +34,7 @@ const SidebarMenu = ({
     } else if (user_id) {
       const fetchProfilePic = async () => {
         try {
-          const response = await fetch(
-            `https://server-geogudep-bpp.vercel.app/user/${user_id}`
-          );
+          const response = await fetch(`${API_URL}user/${user_id}`);
           const result = await response.json();
           if (response.ok) {
             const path = result?.data?.photo_path;

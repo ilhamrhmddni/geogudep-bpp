@@ -1,5 +1,5 @@
 // URL dasar API
-const API_URL = "https://server-geogudep-bpp.vercel.app/";
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Fungsi untuk mengambil data User berdasarkan ID
 export const fetchUserId = async (id) => {

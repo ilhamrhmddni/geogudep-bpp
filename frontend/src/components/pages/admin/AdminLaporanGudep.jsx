@@ -1,411 +1,349 @@
-// File: src/pages/AdminLaporanGudep.jsx
-// Versi: Final Alur Multi-Tahap dengan Tabel HTML Standar
-
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-
-// Import services - Pastikan semua path benar
 import { fetchGugusdepan } from "../../../services/GugusdepanService";
 import { fetchKwarran } from "../../../services/KwarranService";
 import {
-  approveAndGenerateLaporan, // <-- Service baru
+  approveLaporanStatusOnly,
   deleteLaporan,
-  fetchLaporan, // <-- Service baru
+  fetchLaporan,
+  generateDirectPdfReport,
 } from "../../../services/LaporanService";
 
-// Import komponen UI - Pastikan semua path benar
+import {} from "../../../services/LaporanService";
 import AdminHeader from "../../atoms/AdminHeader";
-import Dropdown from "../../atoms/Dropdown"; // Pastikan Dropdown menerima {id, value, label}
+import Dropdown from "../../atoms/Dropdown";
 import ErrorMessage from "../../atoms/ErrorMessage";
 import FormatDate from "../../atoms/FormatDate";
 import LoadingSpinner from "../../atoms/LoadingSpinner";
 import NoDataMessage from "../../atoms/NoDataMessage";
-// import TableRU from "../../moleculs/TableRU"; // Tidak dipakai lagi di file ini
+import TableR from "../../moleculs/TableR";
 import AdminTemplate from "../../templates/AdminTemplate";
 
 const AdminLaporanGudep = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [data, setData] = useState([]); // Data Laporan
-  const [loading, setLoading] = useState(true); // Loading data laporan utama
-  const [error, setError] = useState(null); // Error fetch data
-  const [selectedStatus, setSelectedStatus] = useState(""); // Filter status
-  const [actionLoading, setActionLoading] = useState({}); // Loading per baris { [laporanId]: true }
-
-  // State untuk data referensi Kwarran dan Gudep
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState("");
   const [kwarranList, setKwarranList] = useState([]);
   const [gudepList, setGudepList] = useState([]);
-  const [loadingRefData, setLoadingRefData] = useState(true); // Loading data referensi
-  const navigate = useNavigate(); // Jika perlu navigasi
+  const [pdfLoadingId, setPdfLoadingId] = useState(null);
+  const [selectedLevelFilter, setSelectedLevelFilter] = useState("semua");
 
-  // Fungsi fetch data Laporan (utama)
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // Ad-hoc PDF generator states
+  const [directPdfLevel, setDirectPdfLevel] = useState("semua");
+  const [directPdfTargetId, setDirectPdfTargetId] = useState("");
+  const [directPdfLoading, setDirectPdfLoading] = useState(false);
+
+  const fetchInitialData = useCallback(async () => {
     try {
-      const result = await fetchLaporan();
-      setData(Array.isArray(result?.data) ? result.data : []);
+      setLoading(true);
+      const [laporanResult, kwarranResult, gudepResult] = await Promise.all([
+        fetchLaporan(),
+        fetchKwarran(),
+        fetchGugusdepan(),
+      ]);
+      setData(Array.isArray(laporanResult.data) ? laporanResult.data : []);
+      setKwarranList(kwarranResult.data || []);
+      setGudepList(gudepResult.data || []);
       setError(null);
     } catch (err) {
-      console.error("Error fetching data laporan:", err);
-      setError((prev) => prev || "Gagal mengambil data laporan.");
+      console.error("Error fetching data:", err);
+      setError("Gagal mengambil data.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Fungsi fetch data Referensi (Kwarran & Gudep)
-  const fetchRefData = useCallback(async () => {
-    setLoadingRefData(true);
-    try {
-      const [kwarranResult, gudepResult] = await Promise.all([
-        fetchKwarran(),
-        fetchGugusdepan(),
-      ]);
-      setKwarranList(kwarranResult?.data || []);
-      setGudepList(gudepResult?.data || []);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching ref data:", err);
-      setError((prev) => prev || "Gagal memuat data referensi Kwarran/Gudep.");
-    } finally {
-      setLoadingRefData(false);
-    }
-  }, []);
-
-  // Panggil kedua fetch saat komponen mount
   useEffect(() => {
-    fetchData();
-    fetchRefData();
-  }, [fetchData, fetchRefData]);
+    fetchInitialData();
+  }, [fetchInitialData]);
 
-  // Handlers search & filter status
+  const headers = useMemo(
+    () => [
+      { key: "no", label: "No", width: "w-1/20" },
+      { key: "nama", label: "Pelapor", width: "w-2/20" },
+      { key: "asal", label: "Asal", width: "w-2/20" },
+      { key: "email", label: "Email", width: "w-3/20" },
+      { key: "level", label: "Level Lap.", width: "w-1/20" },
+      { key: "targetDetail", label: "Target", width: "w-2/20" },
+      { key: "status", label: "Status", width: "w-1/20" },
+      { key: "createdAt", label: "Tgl Minta", width: "w-1/20" },
+      { key: "actions", label: "Aksi", width: "w-1/20" },
+    ],
+    []
+  );
+
+  const handleDeleteLaporan = async (id) => {
+    const confirm = await Swal.fire({
+      title: "Yakin ingin menghapus?",
+      text: "Data laporan ini akan dihapus permanen.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Ya, hapus!",
+      cancelButtonText: "Batal",
+    });
+
+    if (confirm.isConfirmed) {
+      try {
+        // Ganti dengan endpoint hapus laporan sesuai service kamu
+        await handleDeleteLaporan(id); // Pastikan fungsi ini tersedia
+        setData((prev) => prev.filter((item) => item.id !== id));
+        Swal.fire("Berhasil", "Laporan telah dihapus.", "success");
+      } catch (err) {
+        console.error("Gagal hapus laporan:", err);
+        Swal.fire("Gagal", "Gagal menghapus laporan.", "error");
+      }
+    }
+  };
+
   const handleSearchChange = useCallback(
     (e) => setSearchQuery(e.target.value),
     []
   );
-  const handleStatusChange = useCallback(
-    (value) => setSelectedStatus(value),
+  const handleStatusFilterChange = useCallback(
+    (value) => setSelectedStatusFilter(value),
     []
   );
 
-  // --- HANDLER AKSI ---
-  const handleApproveGenerate = useCallback(
-    async (id) => {
-      console.log("FE: Triggering Approve & Generate for ID:", id);
-      if (!id) return;
-      setActionLoading((prev) => ({ ...prev, [id]: true }));
-      Swal.fire({
-        title: "Memproses...",
-        text: "Membuat PDF laporan...",
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
-      });
-      try {
-        const result = await approveAndGenerateLaporan(id);
-        Swal.fire(
-          "Sukses!",
-          result.message || "PDF berhasil dibuat, laporan siap dikirim.",
-          "success"
-        );
-        fetchData();
-      } catch (err) {
-        Swal.fire("Gagal!", err.message || "Gagal memproses laporan.", "error");
-      } finally {
-        setActionLoading((prev) => ({ ...prev, [id]: false }));
-      }
-    },
-    [fetchData]
-  );
-
-  const handleDelete = useCallback(
-    async (id) => {
-      console.log("FE: Triggering Delete for ID:", id);
-      if (!id) return;
-      const confirmDelete = await Swal.fire({
-        title: "Yakin ingin menghapus?",
-        text: "Data yang dihapus tidak dapat dikembalikan!",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#7a00cc",
-        cancelButtonColor: "#9500FF",
-        confirmButtonText: "Ya, hapus!",
-        cancelButtonText: "Batal",
-      });
-      if (confirmDelete.isConfirmed) {
-        setActionLoading((prev) => ({ ...prev, [id]: true }));
-        try {
-          await deleteLaporan(id);
-          Swal.fire("Dihapus!", "Data laporan telah dihapus.", "success");
-          fetchData();
-        } catch (err) {
-          console.error("Error deleting report:", err);
-          Swal.fire(
-            "Gagal!",
-            err.message || "Gagal menghapus laporan.",
-            "error"
-          );
-        } finally {
-          setActionLoading((prev) => ({ ...prev, [id]: false }));
-        }
-      }
-    },
-    [fetchData]
-  );
-  // --- AKHIR HANDLER AKSI ---
-
-  // Filter data laporan
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase();
     return data.filter((item) => {
-      const searchFields = [
-        item.nama,
-        item.asal,
-        item.email,
-        item.level,
-        item.target_id,
-        item.status,
+      const searchableFields = [
+        item.nama || "",
+        item.asal || "",
+        item.email || "",
+        item.level || "",
+        item.status || "",
       ];
-      const matchesSearch = searchFields.some((field) =>
-        (field ?? "").toLowerCase().includes(query)
+      const matchesSearch = searchableFields.some((f) =>
+        f.toLowerCase().includes(query)
       );
       const matchesStatus =
-        selectedStatus === "" || item.status === selectedStatus;
-      return matchesSearch && matchesStatus;
+        selectedStatusFilter === "" || item.status === selectedStatusFilter;
+      const matchesLevel =
+        selectedLevelFilter === "semua" || item.level === selectedLevelFilter;
+      return matchesSearch && matchesStatus && matchesLevel;
     });
-  }, [data, searchQuery, selectedStatus]);
+  }, [data, searchQuery, selectedStatusFilter, selectedLevelFilter]);
 
-  // Buat Lookup Maps
   const kwarranMap = useMemo(
     () => new Map(kwarranList.map((k) => [k.id, k.nama])),
     [kwarranList]
   );
   const gudepMap = useMemo(
-    () =>
-      new Map(
-        gudepList.map((g) => [g.id, { nama: g.nama, no_gudep: g.no_gudep }])
-      ),
+    () => new Map(gudepList.map((g) => [g.id, `${g.no_gudep}`])),
     [gudepList]
   );
 
-  // Header tabel
-  const headers = useMemo(
-    () => [
-      { key: "no", label: "No", width: "w-auto" },
-      { key: "nama", label: "Nama Pelapor", width: "w-auto" },
-      { key: "asal", label: "Asal", width: "w-auto" },
-      { key: "email", label: "Email", width: "w-auto" },
-      { key: "level", label: "Level", width: "w-auto" },
-      { key: "targetDetail", label: "Target Laporan", width: "w-auto" },
-      { key: "status", label: "Status", width: "w-auto" },
-      { key: "pdfLink", label: "File PDF", width: "w-auto" },
-      { key: "createdAt", label: "Tgl Minta", width: "w-auto" },
-      { key: "actions", label: "Aksi", width: "w-auto" },
-    ],
-    []
-  );
-
-  // Opsi dropdown status
-  const statusOptions = useMemo(
-    () => [
-      { id: "Menunggu", value: "Menunggu", label: "Menunggu" },
-      { id: "Siap Kirim", value: "Siap Kirim", label: "Siap Kirim" },
-      { id: "Selesai", value: "Selesai", label: "Selesai" },
-    ],
-    []
-  );
-  const FilterDropdowns = (
-    <div className="hidden md:flex gap-2">
-      <Dropdown
-        options={statusOptions}
-        selected={selectedStatus}
-        onChange={handleStatusChange}
-        placeholder="Semua Status"
-        id="status-filter"
-      />
-    </div>
-  );
-
-  // Transformasi data + Render Aksi Kondisional sebagai JSX
   const transformedData = useMemo(() => {
     return filteredData.map((item, index) => {
-      const isLoading = actionLoading[item.id];
-      let actionButtons = [];
-
-      // Logika Tombol Aksi Kondisional
-      if (item.status === "Menunggu") {
-        actionButtons.push(
-          <button
-            key="approveGen"
-            onClick={() => handleApproveGenerate(item.id)}
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs disabled:opacity-50"
-            disabled={isLoading}
-            title="Setujui & Generate PDF"
-          >
-            {" "}
-            {isLoading ? "Memproses..." : "Setujui & Generate"}{" "}
-          </button>
-        );
-      } else if (item.status === "Siap Kirim") {
-        // Hanya tombol Download PDF
-        if (item.pdf_path) {
-          actionButtons.push(
-            <a
-              key="download" // Ubah key jika mau (opsional)
-              href={`/reports/${item.pdf_path}`} // Pastikan path ini benar
-              download={item.pdf_path || true} // TAMBAHKAN atribut download
-              className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded text-xs" // Ubah warna jika mau (misal: hijau)
-              title="Download PDF" // Ubah title
-            >
-              Download {/* UBAH teks tombol */}
-            </a>
-          );
-        } else {
-          actionButtons.push(
-            <span
-              key="pdf-wait"
-              className="text-gray-500 text-xs italic px-2 py-1"
-            >
-              PDF belum siap
-            </span>
-          );
-        }
-        // Tombol Kirim Email sudah dihapus
-        // ... (kode sebelumnya)
-      } else if (item.status === "Selesai") {
-        actionButtons.push(
-          <span
-            key="status"
-            className="text-green-600 text-xs font-semibold px-2 py-1"
-          >
-            Selesai
-          </span>
-        );
-        if (item.pdf_path) {
-          actionButtons.push(
-            <a
-              key="view-done" // Bisa diganti key jika mau (opsional)
-              href={`/reports/${item.pdf_path}`} // Pastikan path ini benar
-              download={item.pdf_path || true} // TAMBAHKAN atribut download
-              className="ml-1 text-green-600 hover:text-green-800 text-xs" // Ubah warna jika mau
-              title="Download PDF" // Ubah title
-            >
-              (Download) {/* UBAH teks link */}
-            </a>
-          );
-        }
-      } else if (item.status === "Error Generate") {
-        // ... (kode selanjutnya)
-        actionButtons.push(
-          <span
-            key="status"
-            className="text-red-600 text-xs font-semibold px-2 py-1"
-          >
-            Error
-          </span>
-        );
-        if (item.status === "Error Generate") {
-          actionButtons.push(
-            <button
-              key="retryGen"
-              onClick={() => handleApproveGenerate(item.id)}
-              className="ml-2 bg-yellow-500 hover:bg-yellow-700 text-white py-1 px-2 rounded text-xs disabled:opacity-50"
-              disabled={isLoading}
-              title="Coba Generate Ulang"
-            >
-              {" "}
-              {isLoading ? "..." : "Retry"}{" "}
-            </button>
-          );
-        }
-      } else {
-        // Status lain (misal: Proses Generate, Proses Kirim)
-        actionButtons.push(
-          <span key="status" className="text-gray-500 text-xs italic px-2 py-1">
-            {item.status || "Memuat..."}
-          </span>
-        );
-      }
-      // Tombol Delete
-      actionButtons.push(
-        <button
-          key="delete"
-          onClick={() => handleDelete(item.id)}
-          className="ml-2 text-red-500 hover:text-red-700 disabled:opacity-50"
-          disabled={isLoading}
-          title="Hapus Laporan"
-        >
-          {" "}
-          <span className="material-icons" style={{ fontSize: "1.1rem" }}>
-            delete
-          </span>{" "}
-        </button>
-      );
-
-      // Menyiapkan Target Detail
       let targetDetail = "-";
-      if (item.level === "kwarran" && !loadingRefData)
-        targetDetail = kwarranMap.get(item.target_id) || item.target_id || "-";
-      else if (item.level === "gudep" && !loadingRefData) {
-        const gudepInfo = gudepMap.get(item.target_id);
-        targetDetail = gudepInfo
-          ? `${gudepInfo.nama || "?"} (${gudepInfo.no_gudep || "?"})`
-          : item.target_id || "-";
-      } else if (item.level === "semua") targetDetail = "Semua Data";
+      if (item.level === "kwarran")
+        targetDetail =
+          kwarranMap.get(item.target_id) || `ID: ${item.target_id}`;
+      else if (item.level === "gudep")
+        targetDetail = gudepMap.get(item.target_id) || `ID: ${item.target_id}`;
+      else if (item.level === "semua") targetDetail = "Semua Data";
 
-      // Data yang akan dirender di tabel
+      const isLoading = pdfLoadingId === item.id;
+
       return {
-        id: item.id,
         no: index + 1,
-        nama: item.nama,
-        asal: item.asal,
+        id: item.id,
+        nama: item.nama || "-",
+        asal: item.asal || "-",
         email: item.email || "-",
         level: item.level || "-",
-        targetDetail: targetDetail,
+        targetDetail,
         status: item.status || "-",
-        pdfLink:
-          (item.status === "Siap Kirim" ||
-            item.status === "Selesai" ||
-            item.status === "Kirim") &&
-          item.pdf_path ? (
-            <a
-              href={`/reports/${item.pdf_path}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800 text-xs"
-            >
-              {" "}
-              Lihat PDF{" "}
-            </a>
-          ) : (
-            "-"
-          ),
         createdAt: item.createdAt ? FormatDate(item.createdAt) : "-",
         actions: (
-          <div className="flex justify-center items-center space-x-1">
-            {actionButtons}
+          <div className="flex gap-1">
+            {item.status === "Menunggu" && (
+              <>
+                <button
+                  className="material-icons bg-green-600 p-1 rounded-md text-white hover:bg-green-700"
+                  onClick={() => handleSetujui(item.id)}
+                  title="Setujui/Proses"
+                >
+                  check
+                </button>
+                <button
+                  className="material-icons bg-red-600 p-1 rounded-md text-white hover:bg-red-700"
+                  onClick={() => handleDelete(item.id)}
+                  title="Hapus"
+                >
+                  delete
+                </button>
+              </>
+            )}
+            {item.status === "Setujui" && (
+              <>
+                <button
+                  className="material-icons bg-purple-600 p-1 rounded-md text-white hover:bg-purple-700"
+                  disabled={isLoading}
+                  onClick={() => handleDownloadPdf(item.id)}
+                  title="Download PDF"
+                >
+                  {isLoading ? "..." : "download"}
+                </button>
+                <button
+                  className="material-icons bg-blue-600 p-1 rounded-md text-white hover:bg-blue-700"
+                  onClick={() => handleSelesai(item.id)}
+                  title="Tandai Selesai"
+                >
+                  check
+                </button>
+                <button
+                  className="material-icons bg-red-600 p-1 rounded-md text-white hover:bg-red-700"
+                  onClick={() => handleDelete(item.id)}
+                  title="Hapus"
+                >
+                  delete
+                </button>
+              </>
+            )}
+            {item.status === "Selesai" && (
+              <button
+                className="material-icons bg-red-600 p-1 rounded-md text-white hover:bg-red-700"
+                onClick={() => handleDelete(item.id)}
+                title="Hapus"
+              >
+                delete
+              </button>
+            )}
           </div>
-        ), // JSX Aksi
+        ),
       };
     });
-  }, [
-    filteredData,
-    actionLoading,
-    handleApproveGenerate,
-    handleDelete,
-    kwarranMap,
-    gudepMap,
-    loadingRefData,
-  ]);
+  }, [filteredData, kwarranMap, gudepMap, pdfLoadingId]);
 
-  // Tampilkan loading utama
-  if (loading || loadingRefData) {
-    return (
-      <AdminTemplate>
-        <LoadingSpinner />
-      </AdminTemplate>
-    );
-  }
+  const statusOptions = [
+    { id: "Menunggu", value: "Menunggu", label: "Menunggu" },
+    { id: "Setujui", value: "Setujui", label: "Setujui/Proses" },
+    { id: "Selesai", value: "Selesai", label: "Selesai" },
+    { id: "Error Generate", value: "Error Generate", label: "Error Generate" },
+  ];
+
+  const handleSetujui = async (id) => {
+    try {
+      await approveLaporanStatusOnly(id, "Setujui");
+      await fetchInitialData();
+      Swal.fire("Berhasil", "Status diperbarui ke Setujui/Proses", "success");
+    } catch (err) {
+      Swal.fire("Gagal", "Tidak bisa memperbarui status", "error");
+    }
+  };
+
+  const handleSelesai = async (id) => {
+    try {
+      await approveLaporanStatusOnly(id, "Selesai");
+      await fetchInitialData();
+      Swal.fire("Berhasil", "Status diperbarui ke Selesai", "success");
+    } catch (err) {
+      Swal.fire("Gagal", "Tidak bisa menyelesaikan laporan", "error");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const result = await Swal.fire({
+        title: "Hapus laporan ini?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Hapus",
+        cancelButtonText: "Batal",
+      });
+      if (result.isConfirmed) {
+        await deleteLaporan(id);
+        await fetchInitialData();
+        Swal.fire("Berhasil", "Laporan berhasil dihapus", "success");
+      }
+    } catch (err) {
+      Swal.fire("Gagal", "Gagal menghapus laporan", "error");
+    }
+  };
+
+  const handleDownloadPdf = async (id) => {
+    const laporan = data.find((item) => item.id === id);
+    if (!laporan) return;
+
+    setPdfLoadingId(id);
+    try {
+      // Atur level dan targetId untuk keperluan generate PDF
+      setDirectPdfLevel(laporan.level);
+      setDirectPdfTargetId(laporan.target_id || "");
+
+      // Tunggu state update dulu agar `handleGenerateDirectPdf` baca nilai baru
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      await handleGenerateDirectPdf();
+      Swal.fire("Berhasil", "PDF berhasil diunduh!", "success");
+    } catch (err) {
+      console.error("Gagal unduh PDF:", err);
+      Swal.fire("Gagal", "Gagal mengunduh PDF.", "error");
+    } finally {
+      setPdfLoadingId(null);
+    }
+  };
+
+  const handleGenerateDirectPdf = useCallback(async () => {
+    if (
+      (directPdfLevel === "kwarran" || directPdfLevel === "gudep") &&
+      !directPdfTargetId
+    ) {
+      Swal.fire(
+        "Input Kurang",
+        `Pilih ${directPdfLevel === "kwarran" ? "Kwarran" : "Gudep"} target.`,
+        "warning"
+      );
+      return;
+    }
+    setDirectPdfLoading(true);
+    Swal.fire({
+      title: "Membuat PDF Langsung...",
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+    try {
+      const params = { level: directPdfLevel };
+      if (directPdfLevel !== "semua") {
+        params.targetId = directPdfTargetId;
+      }
+      await generateDirectPdfReport(params);
+      Swal.close();
+    } catch (err) {
+      Swal.fire(
+        "Gagal!",
+        err.message || "Gagal membuat PDF laporan langsung.",
+        "error"
+      );
+    } finally {
+      setDirectPdfLoading(false);
+    }
+  }, [directPdfLevel, directPdfTargetId]);
+
+  const FilterDropdownsWithButton = (
+    <div className="hidden md:flex gap-3 items-center">
+      <Dropdown
+        options={statusOptions}
+        selected={selectedStatusFilter}
+        onChange={handleStatusFilterChange}
+        placeholder="Semua Status"
+        id="status-filter"
+        className="min-w-[140px]"
+      />
+      <button
+        onClick={handleGenerateDirectPdf}
+        disabled={directPdfLoading || loading}
+        className="bg-[#9500FF] hover:bg-[#7a00cc] text-white font-bold py-2 px-5 rounded-md disabled:opacity-50 h-10 min-w-[140px] cursor-pointer"
+        title="Buat & Unduh PDF Langsung"
+      >
+        {directPdfLoading ? "Memproses..." : "Download"}
+      </button>
+    </div>
+  );
 
   return (
     <AdminTemplate>
@@ -413,59 +351,28 @@ const AdminLaporanGudep = () => {
         <div className="p-4">
           <AdminHeader
             title="Data Permintaan Laporan"
-            showSearch={true}
+            showSearch
             searchValue={searchQuery}
             onSearchChange={handleSearchChange}
-            additionalControls={FilterDropdowns}
+            additionalControls={FilterDropdownsWithButton}
           />
-
-          <div className="mt-6 overflow-x-auto">
-            {error ? (
-              <ErrorMessage message={error} />
-            ) : transformedData.length === 0 ? (
-              <NoDataMessage
-                message={
-                  searchQuery || selectedStatus
-                    ? "Data laporan tidak ditemukan sesuai filter."
-                    : "Belum ada data laporan."
-                }
-              />
-            ) : (
-              // --- Menggunakan Tabel HTML Standar ---
-              <table className="min-w-full table-auto mt-4">
-                <thead>
-                  <tr>
-                    {headers.map((header) => (
-                      <th
-                        key={header.key}
-                        className={`${header.width || ""} px-4 py-2`}
-                      >
-                        {header.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {transformedData.map((item) => (
-                    <tr key={item.id}>
-                      {headers.map((header) => (
-                        <td
-                          key={`${item.id}-${header.key}`}
-                          className="border border-none px-2 py-2 text-center"
-                        >
-                          {" "}
-                          {/* Removed text alignment conditions to match TableCRUD */}
-                          {/* Render data atau JSX aksi */}
-                          {item[header.key] ?? "-"}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              // --- Akhir Tabel HTML Standar ---
-            )}
-          </div>
+          {loading ? (
+            <LoadingSpinner />
+          ) : error ? (
+            <ErrorMessage message={error} />
+          ) : transformedData.length === 0 ? (
+            <NoDataMessage
+              message={
+                searchQuery || selectedStatusFilter
+                  ? "Data laporan tidak ditemukan."
+                  : "Belum ada data permintaan laporan."
+              }
+            />
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <TableR headers={headers} data={transformedData} />
+            </div>
+          )}
         </div>
       </div>
     </AdminTemplate>

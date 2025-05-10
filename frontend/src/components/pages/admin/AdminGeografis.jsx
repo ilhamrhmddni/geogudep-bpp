@@ -85,7 +85,7 @@ const AdminGeografis = () => {
                 disabled={!latitudeValue || !longitudeValue} // Disable jika koordinat tidak ada
                 title="Lihat di Maps"
               >
-                <span className="material-icons">near_me</span>
+                <span className="material-icons align-middle">near_me</span>
               </button>
             </a>
           ),

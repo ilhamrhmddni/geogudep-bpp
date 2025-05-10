@@ -1,6 +1,6 @@
 import axios from "axios"; // Import axios untuk melakukan HTTP request
 
-const API_URL = "https://server-geogudep-bpp.vercel.app/"; // URL dasar API
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Fungsi untuk mengambil semua data Kwarran
 export const fetchKwarran = async () => {

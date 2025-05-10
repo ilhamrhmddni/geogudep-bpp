@@ -1,6 +1,6 @@
 // src/services/AuthService.js
 
-const API_URL = "https://server-geogudep-bpp.vercel.app/"; // Base URL untuk API
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Fungsi untuk login pengguna
 export const login = async (username, password) => {

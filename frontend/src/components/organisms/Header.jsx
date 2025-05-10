@@ -12,6 +12,8 @@ const Header = () => {
   const decodedToken = decodeToken();
   const { username, role, user_id } = decodedToken || {};
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   useEffect(() => {
     const fetchProfilePic = async () => {
       if (!user_id) {
@@ -20,9 +22,7 @@ const Header = () => {
       }
 
       try {
-        const response = await fetch(
-          `https://server-geogudep-bpp.vercel.app/user/${user_id}`
-        );
+        const response = await fetch(`${API_URL}user/${user_id}`);
         const result = await response.json();
 
         if (response.ok) {

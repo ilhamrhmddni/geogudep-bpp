@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { deleteKwarran, fetchKwarran } from "../../../services/KwarranService";
+import { generateDirectPdfReport } from "../../../services/LaporanService";
 import AdminHeader from "../../atoms/AdminHeader";
 import ErrorMessage from "../../atoms/ErrorMessage";
 import LoadingSpinner from "../../atoms/LoadingSpinner";
@@ -14,6 +15,8 @@ const AdminKwarran = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pdfLoadingId, setPdfLoadingId] = useState(false);
+
   const navigate = useNavigate();
 
   // Fetch data Kwarran
@@ -46,9 +49,26 @@ const AdminKwarran = () => {
       { key: "jumlah_gudep", label: "Jumlah Gudep", width: "w-1/12" },
       { key: "email", label: "Email", width: "w-2/12" },
       { key: "actions", label: "Aksi", width: "w-2/12" },
+      { key: "download", label: "Download", width: "w-1/12" }, // Tambahan
     ],
     []
   );
+
+  const handleDownloadPdf = async (targetId) => {
+    setPdfLoadingId(targetId);
+    try {
+      await generateDirectPdfReport({
+        level: "kwarran",
+        targetId,
+      });
+      Swal.fire("Berhasil", "PDF berhasil diunduh!", "success");
+    } catch (err) {
+      console.error("❌ Gagal download PDF:", err);
+      Swal.fire("Gagal", "Gagal mengunduh PDF.", "error");
+    } finally {
+      setPdfLoadingId(null);
+    }
+  };
 
   // Edit handler
   const handleEdit = useCallback(
@@ -97,15 +117,25 @@ const AdminKwarran = () => {
   // Filter data
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return (
-      data
-        ?.filter((item) =>
-          Object.values(item).some((value) =>
-            String(value).toLowerCase().includes(query)
-          )
+    return data
+      ?.filter((item) =>
+        Object.values(item).some((value) =>
+          String(value).toLowerCase().includes(query)
         )
-        .map((item, index) => ({ ...item, no: index + 1 })) || []
-    );
+      )
+      .map((item, index) => ({
+        ...item,
+        no: index + 1,
+        download: (
+          <button
+            onClick={() => handleDownloadPdf(item.id)}
+            className="material-icons bg-[#9500FF] text-white p-1 rounded hover:bg-[#7a00cc]"
+            disabled={pdfLoadingId === item.id}
+          >
+            {pdfLoadingId === item.id ? "..." : "download"}
+          </button>
+        ),
+      }));
   }, [data, searchQuery]);
 
   return (
