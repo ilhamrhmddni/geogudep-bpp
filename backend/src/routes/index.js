@@ -10,7 +10,6 @@ const gudepRoute = require("./gudep-route");
 const eventRoute = require("./event-route");
 const prestasiRoute = require("./prestasi-route");
 const authRoute = require("./auth-route");
-const dataRoute = require("./data-route");
 
 route.get("/", (req, res) => {
   res.json({
@@ -28,6 +27,5 @@ route.use("/gudep", gudepRoute);
 route.use("/event", eventRoute);
 route.use("/prestasi", prestasiRoute);
 route.use("/auth", authRoute);
-route.use("/data", dataRoute);
 
 module.exports = route;

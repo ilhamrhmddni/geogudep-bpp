@@ -39,9 +39,10 @@ const Laporan = sequelize.define(
       allowNull: false, // Anggap level selalu wajib dipilih
       defaultValue: "semua",
     },
+    // models/laporan.js
     target_id: {
-      type: DataTypes.STRING, // Sesuaikan tipe data ini dengan tipe ID Kwarran/Gudep Anda (bisa UUID, INTEGER, dll)
-      allowNull: true, // Boleh null jika level = 'semua'
+      type: DataTypes.UUID, // <-- Ubah tipe data
+      allowNull: true, // Izinkan null jika level 'semua'
     },
     pdf_path: {
       // Untuk menyimpan path relatif ke file PDF

@@ -6,13 +6,19 @@ const {
   getLaporan,
   addLaporan,
   deleteLaporan,
-  approveAndGenerate,
+  approveAndStreamPDF,
+  approveOnly,
+  generateDirectPdf,
+  adhocDownload,
 } = require("../controllers/laporan-controller.js");
 
 route.get("/", getAllLaporan);
 route.get("/:id", getLaporan);
 route.post("/", addLaporan);
-route.put("/:id/approve-generate", approveAndGenerate);
+route.put("/:id/approve-generate", approveAndStreamPDF);
+route.put("/:id/approve", approveOnly);
+route.post("/generate-direct-pdf", generateDirectPdf);
+route.post("/adhoc-download/:id", adhocDownload);
 route.delete("/:id", deleteLaporan);
 
 module.exports = route;

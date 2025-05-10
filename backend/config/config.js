@@ -1,28 +1,29 @@
-const fs = require("fs");
-const path = require("path");
-require("dotenv").config();
+require("dotenv").config(); // Load .env file
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  throw new Error(
-    "❌ DATABASE_URL is not defined in the environment variables."
-  );
-}
+// Ambil variabel dari .env
+const user = process.env.DB_USER;
+const password = process.env.DB_PASSWORD;
+const host = process.env.DB_HOST;
+const port = process.env.DB_PORT;
+const dbName = process.env.DB_NAME;
+const ssl = process.env.DB_SSL === "true"; // Jika SSL diaktifkan, maka "true"
 
-const certsPath = path.join(__dirname, "certs");
-const sslOptions = {
-  require: false, // Match old configuration
-  rejectUnauthorized: false, // Match old configuration
-};
+// Bangun URL koneksi untuk PostgreSQL
+const databaseUrl = `postgresql://${user}:${password}@${host}:${port}/${dbName}?sslmode=${
+  ssl ? "require" : "disable"
+}`;
 
 module.exports = {
   databaseUrl,
   dialect: "postgres",
   dialectModule: require("pg"),
   dialectOptions: {
-    ssl: sslOptions,
+    ssl: {
+      require: ssl,
+      rejectUnauthorized: false, // Untuk mengabaikan masalah sertifikat SSL
+    },
   },
-  logging: false, // Disable logging for production
+  logging: false, // Disable logging untuk produksi
   pool: {
     max: 3,
     min: 0,

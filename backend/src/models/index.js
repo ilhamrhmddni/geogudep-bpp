@@ -84,7 +84,7 @@ db.User.afterCreate(async (user) => {
 (async () => {
   try {
     // Synchronize all tables
-    await sequelize.sync({ alter: true }); // Use `alter: true` to update the schema
+    await sequelize.sync({ alter: false }); // Use `alter: true` to update the schema
     console.log("✅ Database synchronized.");
 
     // Inject default admin user
