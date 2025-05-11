@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { fetchGugusdepan } from "../../../services/GugusdepanService";
 import { fetchKwarran } from "../../../services/KwarranService";
@@ -159,7 +159,7 @@ const AdminLaporanGudep = () => {
         status: item.status || "-",
         createdAt: item.createdAt ? FormatDate(item.createdAt) : "-",
         actions: (
-          <div className="flex gap-1">
+          <div className="flex gap-1 justify-center">
             {item.status === "Menunggu" && (
               <>
                 <button
