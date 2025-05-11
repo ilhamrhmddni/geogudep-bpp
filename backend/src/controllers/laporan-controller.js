@@ -12,7 +12,8 @@ const path = require("path");
 require("dotenv").config();
 const puppeteer = require("puppeteer");
 const fs = require("fs");
-const { kwarran, gudep } = require("../models");
+const { Kwarran, Gudep } = require("../models");
+const chromium = require("chrome-aws-lambda");
 
 async function launchBrowser() {
   console.log("Launching browser...");
@@ -533,68 +534,65 @@ async function renderKwarranHtml(kwarranId) {
   }
 }
 
-async function generatePdfBuffer(browser, htmlContent) {
+async function generatePdfBuffer(htmlContent) {
+  let browser = null;
   let page = null;
-  console.log("Creating new page...");
 
   try {
     if (!htmlContent || htmlContent.trim() === "") {
       throw new Error("HTML content is empty");
     }
 
-    console.log(`HTML content length: ${htmlContent.length} bytes`);
+    console.log("Launching headless browser...");
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      executablePath:
+        (await chromium.executablePath) || "/usr/bin/chromium-browser",
+      headless: chromium.headless,
+    });
 
+    console.log("Creating new page...");
     page = await browser.newPage();
     page.setDefaultTimeout(60000);
     await page.setViewport({ width: 1200, height: 1600, deviceScaleFactor: 1 });
 
-    page.on("console", (message) => {
-      console.log(
-        `PAGE CONSOLE: ${message.type().toUpperCase()} ${message.text()}`
-      );
-    });
-
-    page.on("pageerror", (error) => {
-      console.error("PAGE ERROR:", error.message);
-    });
+    page.on("console", (msg) =>
+      console.log(`PAGE CONSOLE: ${msg.type().toUpperCase()} ${msg.text()}`)
+    );
+    page.on("pageerror", (err) => console.error("PAGE ERROR:", err.message));
 
     console.log("Setting page content...");
     await page.setContent(htmlContent, {
-      waitUntil: "networkidle0", // Tunggu hingga tidak ada lagi permintaan jaringan
+      waitUntil: "networkidle0",
       timeout: 90000,
     });
 
     console.log("Waiting for page to stabilize...");
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Gunakan ini
+    await new Promise((r) => setTimeout(r, 1000));
 
     console.log("Generating PDF...");
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
       margin: { top: "20mm", right: "20mm", bottom: "20mm", left: "20mm" },
-      timeout: 90000,
-      preferCSSPageSize: false,
     });
 
     if (!pdfBuffer || pdfBuffer.length < 1000) {
-      throw new Error(
-        `Generated PDF appears to be invalid (size: ${
-          pdfBuffer?.length || 0
-        } bytes)`
-      );
+      throw new Error(`PDF not valid (size: ${pdfBuffer?.length || 0} bytes)`);
     }
 
-    console.log(`PDF buffer generated successfully: ${pdfBuffer.length} bytes`);
+    console.log(`PDF generated successfully: ${pdfBuffer.length} bytes`);
     return pdfBuffer;
-  } catch (error) {
-    console.error("⚠️ Error generating PDF buffer:", error);
-    throw new Error(`Failed to create PDF buffer: ${error.message}`);
+  } catch (err) {
+    console.error("❌ Failed to create PDF buffer:", err);
+    throw new Error(`Failed to create PDF buffer: ${err.message}`);
   } finally {
-    if (page) {
-      await page.close();
-    }
+    if (page) await page.close();
+    if (browser) await browser.close();
   }
 }
+
+module.exports = generatePdfBuffer;
 
 module.exports = {
   getAllLaporan: async (req, res) => {
