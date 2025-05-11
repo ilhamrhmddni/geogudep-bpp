@@ -540,52 +540,17 @@ async function generatePdfBuffer(htmlContent) {
   let page = null;
 
   try {
-    if (!htmlContent || htmlContent.trim() === "") {
-      throw new Error("HTML content is empty");
-    }
-
-    console.log("Launching headless browser...");
     browser = await puppeteer.launch({
       args: chromium.args,
       executablePath: await chromium.executablePath,
-      headless: chromium.headless, // Headless mode
+      headless: chromium.headless, // Set to headless mode for serverless environments
     });
-
-    console.log("Creating new page...");
     page = await browser.newPage();
-    page.setDefaultTimeout(60000);
-    await page.setViewport({ width: 1200, height: 1600, deviceScaleFactor: 1 });
-
-    page.on("console", (msg) =>
-      console.log(`PAGE CONSOLE: ${msg.type().toUpperCase()} ${msg.text()}`)
-    );
-    page.on("pageerror", (err) => console.error("PAGE ERROR:", err.message));
-
-    console.log("Setting page content...");
-    await page.setContent(htmlContent, {
-      waitUntil: "networkidle0", // Tunggu hingga tidak ada permintaan jaringan
-      timeout: 90000,
-    });
-
-    console.log("Waiting for page to stabilize...");
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Stabilkan halaman
-
-    console.log("Generating PDF...");
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: { top: "20mm", right: "20mm", bottom: "20mm", left: "20mm" },
-    });
-
-    if (!pdfBuffer || pdfBuffer.length < 1000) {
-      throw new Error(`PDF not valid (size: ${pdfBuffer?.length || 0} bytes)`);
-    }
-
-    console.log(`PDF generated successfully: ${pdfBuffer.length} bytes`);
+    await page.setContent(htmlContent);
+    const pdfBuffer = await page.pdf({ format: "A4" });
     return pdfBuffer;
   } catch (err) {
-    console.error("❌ Failed to create PDF buffer:", err);
-    throw new Error(`Failed to create PDF buffer: ${err.message}`);
+    console.error("Error generating PDF:", err);
   } finally {
     if (page) await page.close();
     if (browser) await browser.close();
