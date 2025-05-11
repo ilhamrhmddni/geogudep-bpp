@@ -14,6 +14,7 @@ const puppeteer = require("puppeteer");
 const fs = require("fs");
 const { kwarran, gudep } = require("../models");
 const chromium = require("chrome-aws-lambda");
+const puppeteer = require("puppeteer-core");
 
 async function launchBrowser() {
   console.log("Launching browser...");
@@ -546,9 +547,8 @@ async function generatePdfBuffer(htmlContent) {
     console.log("Launching headless browser...");
     browser = await puppeteer.launch({
       args: chromium.args,
-      executablePath:
-        (await chromium.executablePath) || "/usr/bin/chromium-browser",
-      headless: chromium.headless,
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless, // Headless mode
     });
 
     console.log("Creating new page...");
@@ -563,12 +563,12 @@ async function generatePdfBuffer(htmlContent) {
 
     console.log("Setting page content...");
     await page.setContent(htmlContent, {
-      waitUntil: "networkidle0",
+      waitUntil: "networkidle0", // Tunggu hingga tidak ada permintaan jaringan
       timeout: 90000,
     });
 
     console.log("Waiting for page to stabilize...");
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Stabilkan halaman
 
     console.log("Generating PDF...");
     const pdfBuffer = await page.pdf({
@@ -591,8 +591,6 @@ async function generatePdfBuffer(htmlContent) {
     if (browser) await browser.close();
   }
 }
-
-module.exports = generatePdfBuffer;
 
 module.exports = {
   getAllLaporan: async (req, res) => {
