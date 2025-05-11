@@ -12,7 +12,8 @@ const app = express();
 const rootRoutes = require("./src/routes");
 
 // --- Global Middleware ---
-app.use(cors());
+// TESTTTTTTTTTTT
+app.use(cors("https://geogudep-bpp.vercel.app"));
 app.use(express.json());
 
 // --- File Upload Configuration (Multer) ---
