@@ -10,7 +10,6 @@ const {
 } = require("../models");
 const path = require("path");
 require("dotenv").config();
-const puppeteer = require("puppeteer");
 const fs = require("fs");
 const { kwarran, gudep } = require("../models");
 const chromium = require("chrome-aws-lambda");
