@@ -6,6 +6,7 @@ const axios = require("axios");
 require("dotenv").config();
 const db = require("./src/models");
 const sequelize = require("./config/db");
+const path = require("path");
 
 // --- Initializations ---
 const app = express();
@@ -15,6 +16,10 @@ const rootRoutes = require("./src/routes");
 // TESTTTTTTTTTTT
 app.use(cors("https://geogudep-bpp.vercel.app"));
 app.use(express.json());
+app.use(
+  "/reports",
+  express.static(path.join(__dirname, "generated_html_reports"))
+);
 
 // --- File Upload Configuration (Multer) ---
 const storage = multer.memoryStorage(); // Simpan file di memori

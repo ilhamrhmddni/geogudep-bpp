@@ -11,108 +11,53 @@ const {
 const path = require("path");
 require("dotenv").config();
 const fs = require("fs");
-const { kwarran, gudep } = require("../models");
-const chromium = require("chrome-aws-lambda");
-const puppeteer = require("puppeteer-core");
+const { Op } = require("sequelize"); // Diperlukan untuk query yang lebih kompleks jika ada
 
-async function launchBrowser() {
-  console.log("Launching browser...");
-  try {
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--font-render-hinting=none",
-        "--disable-web-security",
-        "--disable-extensions",
-        "--disable-features=site-per-process",
-        "--js-flags=--max-old-space-size=4096",
-      ],
-      timeout: 60000,
-    });
-    console.log("Browser launched successfully");
-    return browser;
-  } catch (error) {
-    console.error("⚠️ Puppeteer launch error:", error);
-    throw new Error(
-      `Failed to start browser for PDF generation: ${error.message}`
-    );
-  }
-}
-async function closeBrowser(browser) {
-  if (browser) {
-    try {
-      console.log("Closing browser...");
-      await browser.close();
-      console.log("Browser closed successfully");
-    } catch (err) {
-      console.error("⚠️ Error closing browser:", err);
-    }
-  }
-}
-
+// --- Fungsi Render HTML (TETAP SAMA) ---
 async function renderAllHtml() {
   console.log("Starting HTML render for all data...");
   try {
-    // Fetch Kwarran data
     console.log("Fetching Kwarran data...");
     const allKwaran = await Kwarran.findAll({
       include: [{ model: Gudep, as: "gudepesList", attributes: ["id"] }],
+      order: [["nama", "ASC"]],
     });
     console.log(`Found ${allKwaran.length} Kwarran records`);
 
-    // Fetch Gudep data
     console.log("Fetching Gudep data...");
     const allGudep = await Gudep.findAll({
       include: [
-        { model: User, as: "useres" },
+        { model: User, as: "useres", attributes: ["username"] }, // Ambil username saja
         { model: Geografis, as: "geografises" },
-        { model: Event, as: "gudepesEvents" },
+        // { model: Event, as: "gudepesEvents" }, // Mungkin tidak perlu di laporan umum, tergantung kebutuhan
+        { model: Kwarran, as: "kwarranes", attributes: ["nama"] }, // Ambil nama Kwarran
+      ],
+      order: [
+        // Urutkan berdasarkan nama Kwarran dulu, baru nomor Gudep
+        [{ model: Kwarran, as: "kwarranes" }, "nama", "ASC"],
+        ["no_gudep", "ASC"],
       ],
     });
     console.log(`Found ${allGudep.length} Gudep records`);
 
-    if (!allKwaran.length && !allGudep.length) {
-      console.warn("No Kwarran or Gudep data found.");
-    }
+    console.log("Fetching Event data...");
+    const allEvents = await Event.findAll({
+      order: [["tanggal_mulai", "DESC"]],
+    });
+    console.log(`Found ${allEvents.length} Event records`);
 
-    // Verify template file exists
     const templatePath = path.join(__dirname, "../views/report-template.html");
     if (!fs.existsSync(templatePath)) {
       throw new Error(`Template file not found: ${templatePath}`);
     }
-
-    // Read the template
     let template = fs.readFileSync(templatePath, "utf-8");
-    console.log(`Template loaded: ${template.length} bytes`);
 
-    // Validasi template
-    const requiredPlaceholders = [
-      "{{{title}}}",
-      "{{{currentDate}}}",
-      "{{{kwarranRows}}}",
-      "{{{gudepRows}}}",
-      "{{{geografisRows}}}",
-      "{{{eventRows}}}",
-    ];
-    for (const placeholder of requiredPlaceholders) {
-      if (!template.includes(placeholder)) {
-        throw new Error(
-          `Template is missing required placeholder: ${placeholder}`
-        );
-      }
-    }
-
-    // Format current date
     const currentDate = new Date().toLocaleString("id-ID", {
       dateStyle: "full",
       timeStyle: "long",
+      timeZone: "Asia/Makassar",
     });
 
-    // Generate Kwarran rows with safer data handling
     let kwarranRows = allKwaran
       .map((k) => {
         const kode = k?.kode || "-";
@@ -120,119 +65,76 @@ async function renderAllHtml() {
         const ketua_kwarran = k?.ketua_kwarran || "-";
         const ketua_dkr = k?.ketua_dkr || "-";
         const email = k?.email || "-";
-        const gudepCount = k?.gudepesList?.length || 0;
+        const gudepCount =
+          k?.gudepesList?.filter((g) => g.no_gudep !== "ADMIN").length || 0; // Filter ADMIN
 
         return `<tr><td>${kode}</td><td>${nama}</td><td>${ketua_kwarran}</td><td>${ketua_dkr}</td><td>${email}</td><td>${gudepCount}</td></tr>`;
       })
       .join("");
+    if (!kwarranRows)
+      kwarranRows = "<tr><td colspan='6'>Tidak ada data Kwarran.</td></tr>";
 
-    if (!kwarranRows) {
-      kwarranRows = "<tr><td colspan='6'>No Kwarran data available.</td></tr>";
-    }
-
-    // Generate Gudep rows dengan filter dan tambahan data
     let gudepRows = allGudep
-      .filter((g) => g.no_gudep !== "ADMIN") // Filter out ADMIN gudeps
+      .filter((g) => g.no_gudep !== "ADMIN")
       .map((g, index) => {
-        const kwarran = allKwaran.find((k) => k.id === g?.kwarran_id);
-        const kwarranNama = kwarran?.nama || "-";
-        const no_gudep = g?.no_gudep || "-";
-        const tingkatan = g?.tingkatan || "-";
-        const pangkalan = g?.pangkalan || "-"; // Tambahkan pangkalan
-        const ambalan = g?.ambalan || "-"; // Tambahkan ambalan
-        const mabigus = g?.mabigus || "-";
-        const pembina = g?.pembina || "-";
-        const pelatih = g?.pelatih || "-";
-        const email = g?.email || "-";
-        const jumlah_putra = g?.jumlah_putra || 0;
-        const jumlah_putri = g?.jumlah_putri || 0;
-
-        return `<tr><td>${
-          index + 1
-        }</td><td>${kwarranNama}</td><td>${no_gudep}</td><td>${tingkatan}</td><td>${pangkalan}</td><td>${ambalan}</td><td>${mabigus}</td><td>${pembina}</td><td>${pelatih}</td><td>${email}</td><td>${jumlah_putra}</td><td>${jumlah_putri}</td></tr>`;
+        const kwarranNama = g?.kwarranes?.nama || "-";
+        return `<tr><td>${index + 1}</td><td>${kwarranNama}</td><td>${
+          g?.no_gudep || "-"
+        }</td><td>${g?.tingkatan || "-"}</td><td>${
+          g?.pangkalan || "-"
+        }</td><td>${g?.ambalan || "-"}</td><td>${g?.mabigus || "-"}</td><td>${
+          g?.pembina || "-"
+        }</td><td>${g?.pelatih || "-"}</td><td>${g?.email || "-"}</td><td>${
+          g?.jumlah_putra || 0
+        }</td><td>${g?.jumlah_putri || 0}</td></tr>`;
       })
       .join("");
+    if (!gudepRows)
+      gudepRows = "<tr><td colspan='12'>Tidak ada data Gudep.</td></tr>";
 
-    if (!gudepRows) {
-      gudepRows = "<tr><td colspan='12'>No Gudep data available.</td></tr>";
-    }
-
-    // Generate geographic data rows dengan filter ADMIN
     let geografisRows = allGudep
-      .filter((g) => g.no_gudep !== "ADMIN")
-      .flatMap((g) => g?.geografises || [])
-      .filter((geo) => {
-        const gudepPemilik = allGudep.find((g) => g.id === geo?.gudep_id);
-        return gudepPemilik && gudepPemilik.no_gudep !== "ADMIN";
-      })
-      .map((geo, index) => {
-        const gudepPemilik = allGudep.find((g) => g.id === geo?.gudep_id);
-        const kwarranPemilik = allKwaran.find(
-          (k) => k.id === gudepPemilik?.kwarran_id
-        );
-        const kwarranNama = kwarranPemilik?.nama || "-";
-        const gudepNo = gudepPemilik?.no_gudep || "-";
+      .filter((g) => g.no_gudep !== "ADMIN" && g.geografises) // Pastikan geografises ada
+      .map((g, index) => {
+        const geo = g.geografises; // Akses langsung karena One-to-One
+        const kwarranNama = g?.kwarranes?.nama || "-";
+        const gudepNo = g?.no_gudep || "-";
         const koordinat = geo?.titik_koordinat || "-";
         const alamat = geo?.alamat || "-";
-
         return `<tr><td>${
           index + 1
         }</td><td>${kwarranNama}</td><td>${gudepNo}</td><td>${koordinat}</td><td>${alamat}</td></tr>`;
       })
       .join("");
+    if (!geografisRows)
+      geografisRows = "<tr><td colspan='5'>Tidak ada data geografis.</td></tr>";
 
-    if (!geografisRows) {
-      geografisRows =
-        "<tr><td colspan='5'>No geographic data available.</td></tr>";
-    }
-
-    // Generate event rows with safer data handling
-    let eventRows = allGudep
-      .flatMap(
-        (g) =>
-          g?.gudepesEvents?.map((e) => ({
-            ...e.toJSON(),
-            gudep: g,
-          })) || []
-      )
+    let eventRows = allEvents
       .map((e, index) => {
-        const nama = e?.nama || "-";
-        const tanggal_mulai = e?.tanggal_mulai
-          ? new Date(e.tanggal_mulai).toLocaleDateString("id-ID")
-          : "-";
-        const tanggal_selesai = e?.tanggal_selesai
-          ? new Date(e.tanggal_selesai).toLocaleDateString("id-ID")
-          : "-";
-        const tempat = e?.tempat || "-";
-        const tingkat = e?.tingkat || "-";
-        const penyelenggara = e?.penyelenggara || "-";
-
-        return `<tr><td>${
-          index + 1
-        }</td><td>${nama}</td><td>${tanggal_mulai}</td><td>${tanggal_selesai}</td><td>${tempat}</td><td>${tingkat}</td><td>${penyelenggara}</td></tr>`;
+        return `<tr><td>${index + 1}</td><td>${e?.nama || "-"}</td><td>${
+          e?.tanggal_mulai
+            ? new Date(e.tanggal_mulai).toLocaleDateString("id-ID")
+            : "-"
+        }</td><td>${
+          e?.tanggal_selesai
+            ? new Date(e.tanggal_selesai).toLocaleDateString("id-ID")
+            : "-"
+        }</td><td>${e?.tempat || "-"}</td><td>${e?.tingkat || "-"}</td><td>${
+          e?.penyelenggara || "-"
+        }</td></tr>`;
       })
       .join("");
+    if (!eventRows)
+      eventRows = "<tr><td colspan='7'>Tidak ada data kegiatan.</td></tr>";
 
-    if (!eventRows) {
-      eventRows = "<tr><td colspan='7'>No event data available.</td></tr>";
-    }
-
-    // Replace all placeholders in the template
     template = template
-      .replace(/{{{title}}}/g, "Laporan Lengkap Gudep dan Kwarran")
+      .replace(/{{{title}}}/g, "Laporan Lengkap Data Pramuka Balikpapan")
       .replace("{{{currentDate}}}", currentDate)
       .replace("{{{kwarranRows}}}", kwarranRows)
       .replace("{{{gudepRows}}}", gudepRows)
       .replace("{{{geografisRows}}}", geografisRows)
       .replace("{{{eventRows}}}", eventRows);
 
-    if (template.includes("{{{") || template.includes("}}}")) {
-      console.warn(
-        "Warning: Final HTML still contains unreplaced placeholders"
-      );
-    }
-
-    console.log(`Final HTML generated: ${template.length} bytes`);
+    console.log(`Final HTML generated (All): ${template.length} bytes`);
     return template;
   } catch (error) {
     console.error(
@@ -245,111 +147,74 @@ async function renderAllHtml() {
 }
 
 async function renderGudepHtml(gudepId) {
-  console.log(
-    `Starting render HTML for Gudep ID: ${gudepId} (Type: ${typeof gudepId})`
-  );
+  console.log(`Starting render HTML for Gudep ID: ${gudepId}`);
   try {
     if (!gudepId || typeof gudepId !== "string") {
-      throw new Error(`Invalid Gudep ID: ${gudepId} (Type: ${typeof gudepId})`);
+      throw new Error(`Invalid Gudep ID: ${gudepId}`);
     }
 
-    console.log("Fetching all events...");
-    const allEvents = await Event.findAll();
-    console.log(`Found ${allEvents.length} events`);
-
-    console.log(`Finding Gudep with ID: ${gudepId}`);
     const gudep = await Gudep.findOne({
       where: { id: gudepId },
       include: [
-        { model: User, as: "useres" },
+        { model: User, as: "useres", attributes: ["username"] },
         { model: Geografis, as: "geografises" },
-        { model: Prestasi, as: "prestasies" },
-        { model: PesertaDidik, as: "pesertaDidikes" },
+        {
+          model: Prestasi,
+          as: "prestasies",
+          include: [{ model: Event, as: "eventes", attributes: ["nama"] }], // Sertakan nama Event dari Prestasi
+        },
+        { model: PesertaDidik, as: "pesertaDidikes", order: [["nama", "ASC"]] },
         { model: Kwarran, as: "kwarranes" },
       ],
     });
 
-    if (!gudep) {
-      throw new Error(`Gudep with ID ${gudepId} not found.`);
-    }
+    if (!gudep) throw new Error(`Gudep with ID ${gudepId} not found.`);
     console.log(`Found Gudep: ${gudep.no_gudep || "no number"}`);
 
     const templatePath = path.join(
       __dirname,
       "../views/report-template-gudep.html"
     );
-    if (!fs.existsSync(templatePath)) {
+    if (!fs.existsSync(templatePath))
       throw new Error(`Template file not found: ${templatePath}`);
-    }
-
     let template = fs.readFileSync(templatePath, "utf-8");
-    console.log(`Template loaded: ${template.length} bytes`);
 
     const currentDate = new Date().toLocaleString("id-ID", {
       dateStyle: "full",
       timeStyle: "long",
+      timeZone: "Asia/Makassar",
     });
-
-    const kwarran = Array.isArray(gudep.kwarranes)
-      ? gudep.kwarranes[0]
-      : gudep.kwarranes || {};
-    const geoData = Array.isArray(gudep.geografises)
-      ? gudep.geografises[0]
-      : gudep.geografises || {};
+    const kwarran = gudep.kwarranes || {};
+    const geoData = gudep.geografises || {}; // Geografis adalah objek tunggal
 
     let prestasiRows = (gudep.prestasies || [])
-      .filter((p) => p)
       .map((p, index) => {
-        const eventName =
-          allEvents.find((e) => e.id === p?.event_id)?.nama ||
-          p?.event_id ||
-          "-";
-        const keterangan = p?.keterangan || "-";
-
-        return `<tr><td>${
-          index + 1
-        }</td><td>${eventName}</td><td>${keterangan}</td></tr>`;
+        const eventName = p?.eventes?.nama || p?.event_id || "-"; // Ambil nama event dari relasi
+        return `<tr><td>${index + 1}</td><td>${eventName}</td><td>${
+          p?.keterangan || "-"
+        }</td></tr>`;
       })
       .join("");
-
-    if (!prestasiRows) {
+    if (!prestasiRows)
       prestasiRows = "<tr><td colspan='3'>Tidak ada data prestasi.</td></tr>";
-    }
 
     let pesertaRows = (gudep.pesertaDidikes || [])
-      .filter((pd) => pd)
       .map((pd, index) => {
-        const nama = pd?.nama || "-";
-        const gender = pd?.gender || "-";
-        const ttl = pd?.ttl
-          ? new Date(pd.ttl).toLocaleDateString("id-ID")
-          : "-";
-        const detailtingkatan = pd?.detailtingkatan || "-";
-
-        return `<tr><td>${
-          index + 1
-        }</td><td>${nama}</td><td>${gender}</td><td>${ttl}</td><td>${detailtingkatan}</td></tr>`;
+        return `<tr><td>${index + 1}</td><td>${pd?.nama || "-"}</td><td>${
+          pd?.gender || "-"
+        }</td><td>${
+          pd?.ttl ? new Date(pd.ttl).toLocaleDateString("id-ID") : "-"
+        }</td><td>${pd?.detailtingkatan || "-"}</td></tr>`;
       })
       .join("");
-
-    if (!pesertaRows) {
+    if (!pesertaRows)
       pesertaRows =
         "<tr><td colspan='5'>Tidak ada data peserta didik.</td></tr>";
-    }
 
-    // Extract coordinates, longitude and latitude from geoData
     let geoKoordinat = geoData?.titik_koordinat || "-";
-    let geoLong = "-";
-    let geoLat = "-";
+    let geoLong = geoData?.longitude || "-"; // Gunakan field longitude langsung
+    let geoLat = geoData?.latitude || "-"; // Gunakan field latitude langsung
     let geoAlamat = geoData?.alamat || "-";
-
-    if (typeof geoData.titik_koordinat === "string") {
-      const coords = geoData.titik_koordinat.split(",");
-      if (coords.length === 2) {
-        geoLat = coords[0].trim();
-        geoLong = coords[1].trim();
-      }
-    }
 
     template = template
       .replace(/{{{title}}}/g, `Laporan Gudep ${gudep.no_gudep || gudep.id}`)
@@ -366,26 +231,17 @@ async function renderGudepHtml(gudepId) {
       .replace("{{{gudepPembina}}}", gudep?.pembina || "-")
       .replace("{{{gudepPelatih}}}", gudep?.pelatih || "-")
       .replace("{{{gudepEmail}}}", gudep?.email || "-")
-      .replace(
-        "{{{gudepJumlahLaki}}}",
-        gudep?.jumlah_putra != null ? gudep.jumlah_putra.toString() : "0"
-      )
+      .replace("{{{gudepJumlahLaki}}}", gudep?.jumlah_putra?.toString() || "0")
       .replace(
         "{{{gudepJumlahPerempuan}}}",
-        gudep?.jumlah_putri != null ? gudep.jumlah_putri.toString() : "0"
+        gudep?.jumlah_putri?.toString() || "0"
       )
       .replace("{{{geoKoordinat}}}", geoKoordinat)
       .replace("{{{geoLong}}}", geoLong)
       .replace("{{{geoLat}}}", geoLat)
       .replace("{{{geoAlamat}}}", geoAlamat)
       .replace("{{{prestasiRows}}}", prestasiRows)
-      .replace("{{{pesertaRows}}}", pesertaRows || "");
-
-    if (template.includes("{{{") || template.includes("}}}")) {
-      console.warn(
-        "Warning: Final HTML still contains unreplaced placeholders"
-      );
-    }
+      .replace("{{{pesertaRows}}}", pesertaRows);
 
     console.log(`Final Gudep HTML generated: ${template.length} bytes`);
     return template;
@@ -400,55 +256,45 @@ async function renderGudepHtml(gudepId) {
 }
 
 async function renderKwarranHtml(kwarranId) {
-  console.log(
-    `Starting render HTML for Kwarran ID: ${kwarranId} (Type: ${typeof kwarranId})`
-  );
+  console.log(`Starting render HTML for Kwarran ID: ${kwarranId}`);
   try {
     if (!kwarranId || typeof kwarranId !== "string") {
-      throw new Error(
-        `Invalid Kwarran ID: ${kwarranId} (Type: ${typeof kwarranId})`
-      );
+      throw new Error(`Invalid Kwarran ID: ${kwarranId}`);
     }
-
-    console.log(`Finding Kwarran with ID: ${kwarranId}`);
     const kwarran = await Kwarran.findOne({
       where: { id: kwarranId },
       include: [
         {
           model: Gudep,
           as: "gudepesList",
+          where: { no_gudep: { [Op.ne]: "ADMIN" } }, // Filter ADMIN gudep
+          required: false, // Gunakan false agar Kwarran tetap muncul meski tidak ada Gudep (selain ADMIN)
           include: [{ model: Geografis, as: "geografises" }],
+          order: [["no_gudep", "ASC"]],
         },
       ],
     });
 
-    if (!kwarran) {
-      throw new Error(`Kwarran with ID ${kwarranId} not found.`);
-    }
+    if (!kwarran) throw new Error(`Kwarran with ID ${kwarranId} not found.`);
     console.log(`Found Kwarran: ${kwarran.nama || "no name"}`);
 
     const templatePath = path.join(
       __dirname,
       "../views/report-template-kwarran.html"
     );
-    if (!fs.existsSync(templatePath)) {
+    if (!fs.existsSync(templatePath))
       throw new Error(`Template file not found: ${templatePath}`);
-    }
-
     let template = fs.readFileSync(templatePath, "utf-8");
-    console.log(`Template loaded: ${template.length} bytes`);
 
     const currentDate = new Date().toLocaleString("id-ID", {
       dateStyle: "full",
       timeStyle: "long",
+      timeZone: "Asia/Makassar",
     });
 
-    // Gudep rows dengan filter ADMIN dan tambahan pangkalan, ambalan
-    let gudepRows = (kwarran?.gudepesList || [])
-      .filter((g) => g && g.no_gudep !== "ADMIN")
+    let gudepRows = (kwarran?.gudepesList || []) // Sudah difilter di query
       .map((g, index) => {
-        const kwarranNama = kwarran?.nama || "-";
-        return `<tr><td>${index + 1}</td><td>${kwarranNama}</td><td>${
+        return `<tr><td>${index + 1}</td><td>${kwarran?.nama || "-"}</td><td>${
           g?.no_gudep || "-"
         }</td><td>${g?.tingkatan || "-"}</td><td>${
           g?.pangkalan || "-"
@@ -459,43 +305,24 @@ async function renderKwarranHtml(kwarranId) {
         }</td><td>${g?.jumlah_putri || 0}</td></tr>`;
       })
       .join("");
+    if (!gudepRows)
+      gudepRows =
+        "<tr><td colspan='12'>Tidak ada data Gudep di Kwarran ini.</td></tr>";
 
-    if (!gudepRows) {
-      gudepRows = "<tr><td colspan='12'>Tidak ada data Gudep.</td></tr>";
-    }
-
-    // Geografis data dari gudep yang bukan ADMIN
-    let geografisRows = (kwarran?.gudepesList || [])
-      .filter((g) => g && g.no_gudep !== "ADMIN")
-      .flatMap((g) => {
-        if (Array.isArray(g?.geografises)) {
-          return g.geografises;
-        } else if (g?.geografises) {
-          return [g.geografises];
-        } else {
-          return [];
-        }
+    let geografisRows = (kwarran?.gudepesList || []) // Sudah difilter di query
+      .filter((g) => g.geografises) // Pastikan gudep memiliki data geografis
+      .map((g, index) => {
+        const geo = g.geografises;
+        return `<tr><td>${index + 1}</td><td>${kwarran?.nama || "-"}</td><td>${
+          g?.no_gudep || "-"
+        }</td><td>${geo?.titik_koordinat || "-"}</td><td>${
+          geo?.alamat || "-"
+        }</td></tr>`;
       })
-      .filter((geo) => geo)
-      .map((geo, index) => {
-        const gudepPemilik = kwarran?.gudepesList?.find(
-          (g) => g?.id === geo?.gudep_id
-        );
-        const kwarranNama = kwarran?.nama || "-";
-        const gudepNo = gudepPemilik?.no_gudep || "-";
-        const koordinat = geo?.titik_koordinat || "-";
-        const alamat = geo?.alamat || "-";
-
-        return `<tr><td>${
-          index + 1
-        }</td><td>${kwarranNama}</td><td>${gudepNo}</td><td>${koordinat}</td><td>${alamat}</td></tr>`;
-      })
-
       .join("");
-
-    if (!geografisRows) {
-      geografisRows = "<tr><td colspan='4'>Tidak ada data geografis.</td></tr>";
-    }
+    if (!geografisRows)
+      geografisRows =
+        "<tr><td colspan='5'>Tidak ada data geografis Gudep di Kwarran ini.</td></tr>";
 
     template = template
       .replace(
@@ -510,17 +337,10 @@ async function renderKwarranHtml(kwarranId) {
       .replace("{{{kwarranEmail}}}", kwarran?.email || "-")
       .replace(
         "{{{kwarranJumlahGudep}}}",
-        kwarran?.gudepesList?.filter((g) => g && g.no_gudep !== "ADMIN")
-          .length || "0"
+        kwarran?.gudepesList?.length.toString() || "0"
       )
       .replace("{{{gudepRows}}}", gudepRows)
       .replace("{{{geografisRows}}}", geografisRows);
-
-    if (template.includes("{{{") || template.includes("}}}")) {
-      console.warn(
-        "Warning: Final HTML still contains unreplaced placeholders"
-      );
-    }
 
     console.log(`Final Kwarran HTML generated: ${template.length} bytes`);
     return template;
@@ -533,28 +353,42 @@ async function renderKwarranHtml(kwarranId) {
     throw new Error(`Failed to render HTML for Kwarran: ${error.message}`);
   }
 }
+// --- END Fungsi Render HTML ---
 
-async function generatePdfBuffer(htmlContent) {
-  let browser = null;
-  let page = null;
-
-  try {
-    browser = await puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath,
-      headless: chromium.headless, // Set to headless mode for serverless environments
-    });
-    page = await browser.newPage();
-    await page.setContent(htmlContent);
-    const pdfBuffer = await page.pdf({ format: "A4" });
-    return pdfBuffer;
-  } catch (err) {
-    console.error("Error generating PDF:", err);
-  } finally {
-    if (page) await page.close();
-    if (browser) await browser.close();
+// Fungsi untuk memastikan direktori ada
+const ensureDirectoryExistence = (filePath) => {
+  const dirname = path.dirname(filePath);
+  if (fs.existsSync(dirname)) {
+    return true;
   }
-}
+  ensureDirectoryExistence(dirname);
+  fs.mkdirSync(dirname);
+};
+
+// Fungsi untuk mendapatkan nama file laporan yang unik
+const getReportFileName = (level, targetEntity) => {
+  const now = new Date();
+  const timestamp = now.toISOString().replace(/[:.]/g, "-"); // Format YYYY-MM-DDTHH-mm-ss-SSSZ
+  let baseName = "Laporan_";
+
+  if (level === "semua") {
+    baseName += "Semua_Data";
+  } else if (level === "kwarran" && targetEntity) {
+    baseName += `Kwarran_${(targetEntity.nama || targetEntity.id).replace(
+      /\s+/g,
+      "_"
+    )}`;
+  } else if (level === "gudep" && targetEntity) {
+    baseName += `Gudep_${(
+      targetEntity.no_gudep ||
+      targetEntity.pangkalan ||
+      targetEntity.id
+    ).replace(/\s+/g, "_")}`;
+  } else {
+    baseName += "Tidak_Diketahui";
+  }
+  return `${baseName}_${timestamp}.html`;
+};
 
 module.exports = {
   getAllLaporan: async (req, res) => {
@@ -612,45 +446,28 @@ module.exports = {
     }
 
     try {
-      let finalTargetId = null;
-
-      if (level !== "semua" && targetId) {
-        if (typeof targetId !== "string" || targetId.length < 30) {
-          console.error(
-            `Target ID '${targetId}' tidak valid untuk level '${level}'. Bukan string UUID.`
-          );
-          throw new Error(`Target ID ${level} tidak valid (bukan UUID).`);
-        }
-        finalTargetId = targetId;
-        console.log(
-          `Laporan baru: level=${level}, targetId=${targetId} (UUID)`
-        );
-      } else {
-        console.log(`Laporan baru: level=${level}, targetId=null`);
-      }
-
       const newLaporan = await Laporan.create({
         nama,
         asal,
         no_hp: String(noHp),
         email,
         level,
-        target_id: finalTargetId,
+        target_id: level !== "semua" && targetId ? targetId : null, // Simpan null jika 'semua'
+        status: "Menunggu", // Status awal
       });
-      return res
-        .status(201)
-        .json({ message: "Laporan berhasil ditambahkan", data: newLaporan });
+      return res.status(201).json({
+        message: "Permintaan laporan berhasil ditambahkan",
+        data: newLaporan,
+      });
     } catch (error) {
       console.error(
         "❌ Error saat Laporan.create:",
         error.message,
         error.stack
       );
-      if (error.name === "SequelizeValidationError") {
-        return res.status(400).json({ message: "Data tidak valid." });
-      }
       return res.status(500).json({
-        message: "Terjadi kesalahan server saat menambahkan laporan.",
+        message:
+          "Terjadi kesalahan server saat menambahkan permintaan laporan.",
         error: error.message,
       });
     }
@@ -662,6 +479,16 @@ module.exports = {
       const laporan = await Laporan.findByPk(id);
       if (!laporan)
         return res.status(404).json({ message: "Laporan tidak ditemukan" });
+
+      // Hapus file fisik jika ada
+      if (laporan.pdf_path) {
+        // Menggunakan pdf_path untuk menyimpan path HTML
+        const filePath = path.join(__dirname, "../../", laporan.pdf_path); // Sesuaikan path root jika perlu
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log(`File laporan dihapus: ${filePath}`);
+        }
+      }
       await laporan.destroy();
       return res.status(200).json({ message: "Laporan berhasil dihapus" });
     } catch (error) {
@@ -713,132 +540,12 @@ module.exports = {
     }
   },
 
-  generateDirectPdf: async (req, res) => {
-    const { level, targetId } = req.body;
-    let browser = null;
-    try {
-      console.log(
-        `⚡ Memicu Generate PDF Langsung untuk level: ${level}, target: ${targetId}`
-      );
-      if (!level || !["semua", "kwarran", "gudep"].includes(level)) {
-        return res.status(400).json({ message: "Level laporan tidak valid." });
-      }
-
-      let targetIdUntukRender = null;
-      if (level === "kwarran" || level === "gudep") {
-        if (!targetId) {
-          return res
-            .status(400)
-            .json({ message: `Target ID (${level}) wajib diisi.` });
-        }
-        targetIdUntukRender = targetId;
-      }
-
-      browser = await launchBrowser();
-
-      let htmlContent = "";
-      if (level === "semua") {
-        htmlContent = await renderAllHtml();
-      } else if (level === "kwarran") {
-        htmlContent = await renderKwarranHtml(targetIdUntukRender);
-      } else if (level === "gudep") {
-        htmlContent = await renderGudepHtml(targetIdUntukRender);
-      }
-
-      if (!htmlContent || htmlContent.trim() === "") {
-        throw new Error("HTML content is empty after rendering");
-      }
-      const pdfBuffer = await generatePdfBuffer(browser, htmlContent);
-      if (!pdfBuffer || pdfBuffer.length === 0) {
-        throw new Error("Generated PDF buffer is empty");
-      }
-
-      const formatTanggal = () => {
-        const now = new Date();
-        const optionsDate = {
-          day: "2-digit",
-          month: "long",
-          year: "numeric",
-          timeZone: "Asia/Makassar",
-        };
-        const optionsTime = {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-          timeZone: "Asia/Makassar",
-        };
-        const tanggalBagian = now.toLocaleDateString("id-ID", optionsDate);
-        const waktuBagian = now
-          .toLocaleTimeString("id-ID", optionsTime)
-          .replace(/\./g, ":");
-        return `${tanggalBagian} ${waktuBagian}`;
-      };
-
-      let judulLaporan;
-      if (level === "semua") {
-        judulLaporan = "Laporan Seluruh Kwarran & Gudep";
-      } else if (level === "kwarran") {
-        const dataKwarran = await Kwarran.findByPk(targetId);
-        console.log(
-          `DEBUG [${new Date().toISOString()}] generateDirectPdf - Data Kwarran untuk ID ${targetId}:`,
-          JSON.stringify(dataKwarran, null, 2)
-        );
-        const namaKwarran =
-          dataKwarran && dataKwarran.nama && dataKwarran.nama.trim() !== ""
-            ? dataKwarran.nama
-            : `ID ${targetId} (Nama Kwarran Tdk Ada)`;
-        judulLaporan = `Laporan Kwarran ${namaKwarran}`;
-      } else if (level === "gudep") {
-        const dataGudep = await Gudep.findByPk(targetId);
-        console.log(
-          `DEBUG [${new Date().toISOString()}] generateDirectPdf - Data Gudep untuk ID ${targetId}:`,
-          JSON.stringify(dataGudep, null, 2)
-        );
-        const nomorGudepText =
-          dataGudep &&
-          dataGudep.nomor_gudep &&
-          dataGudep.nomor_gudep.trim() !== ""
-            ? dataGudep.nomor_gudep
-            : `ID ${targetId} (Nomor Gudep Tdk Ada)`;
-        judulLaporan = `Laporan Gudep ${nomorGudepText}`;
-      }
-
-      const filename = `${judulLaporan} ( ${formatTanggal()} ).pdf`;
-
-      res.set({
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${encodeURIComponent(
-          filename
-        )}"`, // encodeURIComponent untuk karakter khusus
-        "Content-Length": pdfBuffer.length,
-      });
-      res.end(pdfBuffer);
-    } catch (error) {
-      console.error(
-        `❌ Gagal generate (direct) laporan:`,
-        error.message,
-        error.stack
-      );
-      if (!res.headersSent) {
-        const errorMessage = `Gagal memproses permintaan: ${error.message}`;
-        return res
-          .status(500)
-          .json({ message: errorMessage, error: error.message });
-      } else {
-        console.error("Error terjadi setelah header PDF terkirim.");
-      }
-    } finally {
-      if (browser) await closeBrowser(browser);
-    }
-  },
-
-  approveAndStreamPDF: async (req, res) => {
+  approveAndGenerateHtmlReport: async (req, res) => {
     const { id: laporanId } = req.params;
     let laporan;
-    let browser = null;
     try {
       console.log(
-        `⚡ Memicu Approve & Generate (Stream) untuk ID Laporan: ${laporanId}`
+        `⚡ Memicu Approve & Generate HTML untuk ID Laporan: ${laporanId}`
       );
       laporan = await Laporan.findByPk(laporanId);
       if (!laporan) {
@@ -854,90 +561,63 @@ module.exports = {
 
       await laporan.update({ status: "Setujui" });
       console.log(
-        `⚙️ Memulai generate PDF (stream) untuk level: ${laporan.level}, target: ${laporan.target_id}. Status diubah menjadi 'Setujui'`
+        `⚙️ Memulai generate HTML untuk level: ${laporan.level}, target: ${laporan.target_id}. Status diubah menjadi 'Setujui'`
       );
 
-      let targetIdUntukRender = laporan.target_id;
-      browser = await launchBrowser();
       let htmlContent = "";
+      let targetEntity = null;
 
       if (laporan.level === "semua") {
         htmlContent = await renderAllHtml();
       } else if (laporan.level === "kwarran") {
-        if (!targetIdUntukRender)
+        if (!laporan.target_id)
           throw new Error("Target ID Kwarran tidak ada di Laporan.");
-        htmlContent = await renderKwarranHtml(targetIdUntukRender);
+        targetEntity = await Kwarran.findByPk(laporan.target_id);
+        if (!targetEntity)
+          throw new Error(
+            `Kwarran dengan ID ${laporan.target_id} tidak ditemukan.`
+          );
+        htmlContent = await renderKwarranHtml(laporan.target_id);
       } else if (laporan.level === "gudep") {
-        if (!targetIdUntukRender)
+        if (!laporan.target_id)
           throw new Error("Target ID Gudep tidak ada di Laporan.");
-        htmlContent = await renderGudepHtml(targetIdUntukRender);
+        targetEntity = await Gudep.findByPk(laporan.target_id);
+        if (!targetEntity)
+          throw new Error(
+            `Gudep dengan ID ${laporan.target_id} tidak ditemukan.`
+          );
+        htmlContent = await renderGudepHtml(laporan.target_id);
       } else {
         throw new Error(`Level laporan tidak dikenal: ${laporan.level}`);
       }
 
-      if (!htmlContent || htmlContent.trim() === "")
+      if (!htmlContent || htmlContent.trim() === "") {
         throw new Error("HTML content is empty after rendering");
-      const pdfBuffer = await generatePdfBuffer(browser, htmlContent);
-      if (!pdfBuffer || pdfBuffer.length === 0)
-        throw new Error("Generated PDF buffer is empty");
-
-      const formatTanggal = () => {
-        const now = new Date();
-        const optionsDate = {
-          day: "2-digit",
-          month: "long",
-          year: "numeric",
-          timeZone: "Asia/Makassar",
-        };
-        const optionsTime = {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-          timeZone: "Asia/Makassar",
-        };
-        const tanggalBagian = now.toLocaleDateString("id-ID", optionsDate);
-        const waktuBagian = now
-          .toLocaleTimeString("id-ID", optionsTime)
-          .replace(/\./g, ":");
-        return `${tanggalBagian} ${waktuBagian}`;
-      };
-
-      let judulLaporan = "Laporan";
-      if (laporan.level === "semua") {
-        judulLaporan = "Laporan Seluruh Kwarran & Gudep";
-      } else if (laporan.level === "kwarran") {
-        const dataKwarran = await Kwarran.findByPk(laporan.target_id);
-        const namaKwarran = dataKwarran?.nama || `Kwarran ${laporan.target_id}`;
-        judulLaporan = `Laporan Kwarran ${namaKwarran}`;
-      } else if (laporan.level === "gudep") {
-        const dataGudep = await Gudep.findByPk(laporan.target_id);
-        const namaGudep = dataGudep?.nomor_gudep
-          ? dataGudep.nomor_gudep
-          : `Gudep ${laporan.target_id}`;
-        judulLaporan = `Laporan ${namaGudep}`;
       }
 
-      const filename = `${judulLaporan} ( ${formatTanggal()} ).pdf`;
+      const reportDir = path.join(__dirname, "../../generated_html_reports"); // Simpan di root/generated_html_reports
+      ensureDirectoryExistence(path.join(reportDir, "file.html")); // Pastikan direktori ada
 
-      await closeBrowser(browser); // Tutup browser sebelum mengirim respons jika tidak ada streaming lanjutan
-      browser = null;
+      const fileName = getReportFileName(laporan.level, targetEntity);
+      const filePath = path.join(reportDir, fileName);
+      const relativeFilePath = path.join("generated_html_reports", fileName); // Path relatif untuk disimpan di DB
 
-      res.set({
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${encodeURIComponent(
-          filename
-        )}"`,
-        "Content-Length": pdfBuffer.length,
-      });
-      console.log("Sending PDF to client...");
-      res.end(pdfBuffer);
-      await laporan.update({ status: "Selesai" });
+      fs.writeFileSync(filePath, htmlContent);
+      console.log(`HTML report saved to: ${filePath}`);
+
+      await laporan.update({ status: "Selesai", pdf_path: relativeFilePath }); // pdf_path kini menyimpan path HTML
       console.log(
-        `Status laporan ID ${laporanId} diubah menjadi 'Selesai' setelah PDF berhasil dikirim.`
+        `Status laporan ID ${laporanId} diubah menjadi 'Selesai' dan path HTML disimpan.`
       );
+
+      res.status(200).json({
+        message: "Laporan HTML berhasil dibuat dan disimpan di server.",
+        filePath: relativeFilePath, // Kirim path relatif ke klien
+        data: laporan,
+      });
     } catch (error) {
       console.error(
-        `❌ Gagal generate (stream) laporan ID ${laporanId}:`,
+        `❌ Gagal generate HTML laporan ID ${laporanId}:`,
         error.message,
         error.stack
       );
@@ -955,109 +635,129 @@ module.exports = {
         }
       }
       if (!res.headersSent) {
-        const errorMessage = `Gagal memproses permintaan: ${error.message}`;
-        return res
-          .status(500)
-          .json({ message: errorMessage, error: error.message });
-      } else {
-        console.error("Error terjadi setelah header PDF terkirim.");
+        return res.status(500).json({
+          message: `Gagal memproses permintaan pembuatan laporan HTML: ${error.message}`,
+          error: error.message,
+        });
       }
-    } finally {
-      if (browser) await closeBrowser(browser);
     }
   },
 
-  adhocDownload: async (req, res) => {
-    const { id: laporanId } = req.params;
-    let browser = null;
+  generateDirectHtmlReport: async (req, res) => {
+    const { level, targetId } = req.body;
     try {
-      console.log(`📥 Memicu Adhoc Download untuk ID Laporan: ${laporanId}`);
-      const laporan = await Laporan.findByPk(laporanId);
-      if (!laporan) {
-        return res.status(404).json({ message: "Laporan tidak ditemukan." });
+      console.log(
+        `⚡ Memicu Generate HTML Langsung untuk level: ${level}, target: ${targetId}`
+      );
+      if (!level || !["semua", "kwarran", "gudep"].includes(level)) {
+        return res.status(400).json({ message: "Level laporan tidak valid." });
       }
-      const { level, target_id: targetId } = laporan; // targetId diambil dari laporan.target_id
-      browser = await launchBrowser();
+      if ((level === "kwarran" || level === "gudep") && !targetId) {
+        return res
+          .status(400)
+          .json({ message: `Target ID (${level}) wajib diisi.` });
+      }
+
       let htmlContent = "";
+      let targetEntity = null;
 
       if (level === "semua") {
         htmlContent = await renderAllHtml();
       } else if (level === "kwarran") {
-        if (!targetId) throw new Error("Target ID Kwarran tidak tersedia.");
+        targetEntity = await Kwarran.findByPk(targetId);
+        if (!targetEntity)
+          throw new Error(`Kwarran dengan ID ${targetId} tidak ditemukan.`);
         htmlContent = await renderKwarranHtml(targetId);
       } else if (level === "gudep") {
-        if (!targetId) throw new Error("Target ID Gudep tidak tersedia.");
+        targetEntity = await Gudep.findByPk(targetId);
+        if (!targetEntity)
+          throw new Error(`Gudep dengan ID ${targetId} tidak ditemukan.`);
         htmlContent = await renderGudepHtml(targetId);
-      } else {
-        throw new Error(`Level laporan tidak valid: ${level}`);
       }
 
-      if (!htmlContent || htmlContent.trim() === "")
-        throw new Error("HTML hasil render kosong.");
-      const pdfBuffer = await generatePdfBuffer(browser, htmlContent);
-      if (!pdfBuffer || pdfBuffer.length === 0)
-        throw new Error("PDF buffer kosong setelah generate.");
-
-      const formatTanggal = () => {
-        const now = new Date();
-        const optionsDate = {
-          day: "2-digit",
-          month: "long",
-          year: "numeric",
-          timeZone: "Asia/Makassar",
-        };
-        const optionsTime = {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-          timeZone: "Asia/Makassar",
-        };
-        const tanggalBagian = now.toLocaleDateString("id-ID", optionsDate);
-        const waktuBagian = now
-          .toLocaleTimeString("id-ID", optionsTime)
-          .replace(/\./g, ":");
-        return `${tanggalBagian} ${waktuBagian}`;
-      };
-
-      let judulLaporan = "Laporan";
-      if (level === "semua") {
-        judulLaporan = "Laporan Seluruh Kwarran & Gudep";
-      } else if (level === "kwarran") {
-        const dataKwarran = await Kwarran.findByPk(targetId);
-        const namaKwarran = dataKwarran?.nama || `Kwarran ${targetId}`;
-        judulLaporan = `Laporan Kwarran ${namaKwarran}`;
-      } else if (level === "gudep") {
-        const dataGudep = await Gudep.findByPk(targetId);
-        const namaGudep = dataGudep?.nomor_gudep
-          ? dataGudep.nomor_gudep
-          : `Gudep ${targetId}`;
-        judulLaporan = `Laporan ${namaGudep}`;
+      if (!htmlContent || htmlContent.trim() === "") {
+        throw new Error("HTML content is empty after rendering");
       }
 
-      const filename = `${judulLaporan} ( ${formatTanggal()} ).pdf`;
+      const reportDir = path.join(__dirname, "../../generated_html_reports");
+      ensureDirectoryExistence(path.join(reportDir, "file.html"));
 
-      res.set({
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${encodeURIComponent(
-          filename
-        )}"`,
-        "Content-Length": pdfBuffer.length,
+      const fileName = getReportFileName(level, targetEntity);
+      const filePath = path.join(reportDir, fileName);
+      const relativeFilePath = path.join("generated_html_reports", fileName);
+
+      fs.writeFileSync(filePath, htmlContent);
+      console.log(`HTML report saved to: ${filePath}`);
+
+      // Tidak ada update ke model Laporan karena ini direct generation
+      res.status(200).json({
+        message:
+          "Laporan HTML berhasil dibuat dan disimpan di server secara langsung.",
+        filePath: relativeFilePath, // Kirim path relatif agar client tahu lokasinya
+        // Jika ingin mengirim file langsung:
+        // res.download(filePath, fileName); (ini akan mengunduh, bukan JSON response)
       });
-      res.end(pdfBuffer);
     } catch (error) {
       console.error(
-        `❌ Gagal adhoc download laporan ID ${req.params.id}:`,
+        `❌ Gagal generate (direct) laporan HTML:`,
         error.message,
         error.stack
       );
       if (!res.headersSent) {
         return res.status(500).json({
-          message: "Gagal melakukan download adhoc.",
+          message: `Gagal memproses permintaan: ${error.message}`,
           error: error.message,
         });
       }
-    } finally {
-      if (browser) await closeBrowser(browser);
+    }
+  },
+
+  adhocDownloadHtmlReport: async (req, res) => {
+    const { id: laporanId } = req.params;
+    try {
+      console.log(
+        `📥 Memicu Adhoc Download HTML untuk ID Laporan: ${laporanId}`
+      );
+      const laporan = await Laporan.findByPk(laporanId);
+      if (!laporan) {
+        return res.status(404).json({ message: "Laporan tidak ditemukan." });
+      }
+      if (!laporan.pdf_path) {
+        // pdf_path kini menyimpan path HTML
+        return res.status(404).json({
+          message: "File laporan HTML tidak ditemukan untuk permintaan ini.",
+        });
+      }
+
+      const filePath = path.join(__dirname, "../../", laporan.pdf_path); // Sesuaikan path root jika perlu
+
+      if (fs.existsSync(filePath)) {
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${path.basename(filePath)}"`
+        );
+        res.setHeader("Content-Type", "text/html");
+        fs.createReadStream(filePath).pipe(res);
+      } else {
+        console.error(
+          `File tidak ditemukan di server: ${filePath} untuk laporan ID ${laporanId}`
+        );
+        return res
+          .status(404)
+          .json({ message: "File laporan HTML tidak ditemukan di server." });
+      }
+    } catch (error) {
+      console.error(
+        `❌ Gagal adhoc download HTML laporan ID ${laporanId}:`,
+        error.message,
+        error.stack
+      );
+      if (!res.headersSent) {
+        return res.status(500).json({
+          message: "Gagal melakukan download adhoc laporan HTML.",
+          error: error.message,
+        });
+      }
     }
   },
 };
