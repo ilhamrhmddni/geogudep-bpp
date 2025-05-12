@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { deleteKwarran, fetchKwarran } from "../../../services/KwarranService";
 // Impor fungsi yang sudah disesuaikan untuk HTML
-import { downloadHtmlKwarran } from "../../../services/LaporanService";
+import { downloadPdfKwarran } from "../../../services/LaporanService";
 import AdminHeader from "../../atoms/AdminHeader";
 import ErrorMessage from "../../atoms/ErrorMessage";
 import LoadingSpinner from "../../atoms/LoadingSpinner";
@@ -61,7 +61,7 @@ const AdminKwarran = () => {
     setReportLoadingId(targetId); // Set loading state
     try {
       // Panggil service yang sudah diupdate untuk HTML
-      await downloadHtmlKwarran(targetId, namaKwarran);
+      await downloadPdfKwarran(targetId, namaKwarran);
       Swal.fire("Berhasil", "Laporan HTML berhasil diunduh!", "success");
     } catch (err) {
       console.error("❌ Gagal download Laporan HTML:", err);

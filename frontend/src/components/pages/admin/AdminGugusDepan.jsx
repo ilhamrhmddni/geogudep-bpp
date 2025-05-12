@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+// src/components/pages/admin/AdminGugusdepan.jsx
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { fetchGugusdepan } from "../../../services/GugusdepanService";
 import { fetchKwarran } from "../../../services/KwarranService";
-// Impor fungsi yang sudah disesuaikan untuk HTML
-import { downloadHtmlGudep } from "../../../services/LaporanService";
+import { downloadPdfGudep } from "../../../services/LaporanService"; // Diubah
 import AdminHeader from "../../atoms/AdminHeader";
+// ... (impor lainnya)
 import DetailCell from "../../atoms/DetailCell";
 import Dropdown from "../../atoms/Dropdown";
 import ErrorMessage from "../../atoms/ErrorMessage";
@@ -22,9 +23,7 @@ const AdminGugusdepan = () => {
   const [selectedTingkatan, setSelectedTingkatan] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // State for report generation loading
-  const [reportLoadingId, setReportLoadingId] = useState(null); // Nama state diubah
+  const [reportLoadingId, setReportLoadingId] = useState(null);
 
   const fetchInitialData = useCallback(async () => {
     try {
@@ -36,11 +35,13 @@ const AdminGugusdepan = () => {
       setData(
         Array.isArray(gugusdepanResult.data) ? gugusdepanResult.data : []
       );
-      setKwarranList(kwarranResult.data || []);
+      setKwarranList(
+        Array.isArray(kwarranResult.data) ? kwarranResult.data : []
+      );
       setError(null);
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError("Gagal mengambil data.");
+      setError(err.message || "Gagal mengambil data.");
     } finally {
       setLoading(false);
     }
@@ -61,70 +62,90 @@ const AdminGugusdepan = () => {
       { key: "jumlah", label: "Jumlah", width: "w-1/20" },
       { key: "email", label: "Email", width: "w-3/20" },
       { key: "detail", label: "Detail", width: "w-1/20" },
-      { key: "tahun_update", label: "Tanggal Update", width: "w-1/20" },
-      { key: "actions", label: "Unduh Laporan", width: "w-2/20" }, // Lebar kolom disesuaikan
+      { key: "tahun_update", label: "Tanggal Update", width: "w-2/20" }, // Adjusted
+      { key: "actions", label: "Unduh Laporan", width: "w-2/20" },
     ],
     []
   );
 
-  const handleSearchChange = useCallback((e) => {
-    setSearchQuery(e.target.value);
-  }, []);
-  const handleKwarranChange = useCallback((value) => {
-    setSelectedKwarran(value);
-  }, []);
-  const handleTingkatanChange = useCallback((value) => {
-    setSelectedTingkatan(value);
-  }, []);
+  const handleSearchChange = useCallback(
+    (e) => setSearchQuery(e.target.value),
+    []
+  );
+  const handleKwarranChange = useCallback(
+    (value) => setSelectedKwarran(value),
+    []
+  );
+  const handleTingkatanChange = useCallback(
+    (value) => setSelectedTingkatan(value),
+    []
+  );
+
+  const handleDownloadPdf = async (targetId, namaGudep) => {
+    setReportLoadingId(targetId);
+    try {
+      const result = await downloadPdfGudep(targetId, namaGudep); // Service yang benar
+      Swal.fire(
+        "Info",
+        result.message || "Proses unduh laporan dari Dropbox dimulai.",
+        "info"
+      );
+    } catch (err) {
+      Swal.fire(
+        "Gagal",
+        err.message || "Gagal mengunduh Laporan HTML dari Dropbox.",
+        "error"
+      );
+    } finally {
+      setReportLoadingId(null);
+    }
+  };
 
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase();
-
-    const intermediateData =
-      data?.filter((item) => {
-        const searchMatch =
-          (item.no_gudep ?? "").toLowerCase().includes(query) ||
-          (item.pangkalan ?? "").toLowerCase().includes(query) || // Tambah pangkalan ke pencarian
-          (item.mabigus ?? "").toLowerCase().includes(query) ||
-          (item.pembina ?? "").toLowerCase().includes(query) ||
-          (item.pelatih ?? "").toLowerCase().includes(query);
-
+    const intermediateData = (Array.isArray(data) ? data : []).filter(
+      (item) => {
+        const searchMatch = [
+          item.no_gudep,
+          item.pangkalan,
+          item.mabigus,
+          item.pembina,
+          item.pelatih,
+        ].some((field) => (field ?? "").toLowerCase().includes(query));
+        const kwarranNamaSelected = kwarranList.find(
+          (k) => k.id === item.kwarran_id
+        )?.nama;
         const kwarranMatch = selectedKwarran
-          ? kwarranList.find((k) => k.id === item.kwarran_id)?.nama ===
-            selectedKwarran
+          ? kwarranNamaSelected === selectedKwarran
           : true;
-
         const tingkatanMatch = selectedTingkatan
           ? item.tingkatan === selectedTingkatan
           : true;
-
         return (
           searchMatch &&
           kwarranMatch &&
           tingkatanMatch &&
           item.useres?.role !== "admin"
         );
-      }) || [];
-
+      }
+    );
     const totalRows = intermediateData.length;
     const threshold = 2;
-
     return intermediateData.map((item, index) => {
       const isNearBottom = index >= totalRows - threshold;
       const positionValue = isNearBottom ? "top" : "bottom";
-
       return {
         ...item,
         no: index + 1,
         kwarran_nama:
           kwarranList.find((k) => k.id === item.kwarran_id)?.nama || "-",
-        tahun_update: FormatDate(item.tahun_update),
+        tahun_update: item.tahun_update ? FormatDate(item.tahun_update) : "-",
         jumlah: (
           <DetailCell
             title="Lihat"
             details={[
-              { label: "Putra", value: item.jumlah_putra ?? "-" },
-              { label: "Putri", value: item.jumlah_putri ?? "-" },
+              { label: "Putra", value: item.jumlah_putra ?? 0 },
+              { label: "Putri", value: item.jumlah_putri ?? 0 },
             ]}
             position={positionValue}
           />
@@ -143,10 +164,11 @@ const AdminGugusdepan = () => {
         actions: (
           <button
             onClick={() =>
-              handleDownloadHtml(item.id, item.no_gudep || item.pangkalan)
-            } // Panggil handleDownloadHtml
-            className="material-icons color-[#9500FF] bg-[#9500FF] p-1 rounded-md text-white align-middle hover:bg-[#7a00cc]"
-            disabled={reportLoadingId === item.id} // Gunakan reportLoadingId
+              handleDownloadPdf(item.id, item.pangkalan || item.no_gudep)
+            }
+            className="material-icons bg-[#9500FF] text-white p-1 rounded-md hover:bg-[#7a00cc] text-sm"
+            disabled={reportLoadingId === item.id}
+            title="Unduh Laporan Gudep (HTML)"
           >
             {reportLoadingId === item.id ? "..." : "download"}
           </button>
@@ -159,32 +181,17 @@ const AdminGugusdepan = () => {
     selectedKwarran,
     selectedTingkatan,
     kwarranList,
-    reportLoadingId, // Dependensi diubah
+    reportLoadingId,
   ]);
-
-  // Fungsi untuk mengunduh laporan HTML
-  const handleDownloadHtml = async (targetId, namaGudep) => {
-    setReportLoadingId(targetId); // Set loading state
-    try {
-      // Panggil service yang sudah diupdate untuk HTML
-      await downloadHtmlGudep(targetId, namaGudep);
-      Swal.fire("Berhasil", "Laporan HTML berhasil diunduh!", "success");
-    } catch (err) {
-      console.error("❌ Gagal download Laporan HTML:", err);
-      Swal.fire(
-        "Gagal",
-        err.message || "Gagal mengunduh Laporan HTML.",
-        "error"
-      );
-    } finally {
-      setReportLoadingId(null); // Reset loading state
-    }
-  };
 
   const FilterDropdowns = (
     <div className="hidden md:flex gap-2">
       <Dropdown
-        options={kwarranList.map((k) => ({ id: k.nama, nama: k.nama }))}
+        options={kwarranList.map((k) => ({
+          id: k.nama,
+          nama: k.nama,
+          value: k.nama,
+        }))}
         selected={selectedKwarran}
         onChange={handleKwarranChange}
         placeholder="Pilih Kwarran"
@@ -195,7 +202,7 @@ const AdminGugusdepan = () => {
           { id: "Penggalang", nama: "Penggalang" },
           { id: "Penegak/Pandega", nama: "Penegak/Pandega" },
           { id: "Pandega", nama: "Pandega" },
-        ]}
+        ].map((o) => ({ ...o, value: o.id }))}
         selected={selectedTingkatan}
         onChange={handleTingkatanChange}
         placeholder="Pilih Tingkatan"

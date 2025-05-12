@@ -1,14 +1,15 @@
+// src/components/pages/admin/AdminLaporanGudep.jsx
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { fetchGugusdepan } from "../../../services/GugusdepanService";
 import { fetchKwarran } from "../../../services/KwarranService";
 import {
   approveLaporanStatusOnly,
-  deleteLaporan as deleteLaporanService, // Fungsi baru untuk item laporan
-  downloadOrViewSavedHtmlReport, // Alias untuk menghindari konflik nama
-  fetchLaporan, // Diubah dari generateDirectPdfReport
-  generateAndDownloadHtmlReport,
-  generateDirectHtmlReportAndDownload, // Diubah dari generateDirectPdfReport
+  deleteLaporan as deleteLaporanService, // Diubah ke PDF
+  downloadOrViewSavedPdfReport,
+  fetchLaporan,
+  generateAndDownloadPdfReport,
+  generateDirectPdfReportAndDownload,
 } from "../../../services/LaporanService";
 
 import AdminHeader from "../../atoms/AdminHeader";
@@ -28,13 +29,12 @@ const AdminLaporanGudep = () => {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("");
   const [kwarranList, setKwarranList] = useState([]);
   const [gudepList, setGudepList] = useState([]);
-  const [reportLoadingId, setReportLoadingId] = useState(null); // Diubah dari pdfLoadingId
+  const [reportLoadingId, setReportLoadingId] = useState(null);
   const [selectedLevelFilter, setSelectedLevelFilter] = useState("semua");
 
-  // Ad-hoc HTML generator states
-  const [directReportLevel, setDirectReportLevel] = useState("semua"); // Diubah
-  const [directReportTargetId, setDirectReportTargetId] = useState(""); // Diubah
-  const [directReportLoading, setDirectReportLoading] = useState(false); // Diubah
+  const [directReportLevel, setDirectReportLevel] = useState("semua");
+  const [directReportTargetId, setDirectReportTargetId] = useState("");
+  const [directReportLoading, setDirectReportLoading] = useState(false);
 
   const fetchInitialData = useCallback(async () => {
     try {
@@ -45,16 +45,18 @@ const AdminLaporanGudep = () => {
         fetchGugusdepan(),
       ]);
       setData(Array.isArray(laporanResult.data) ? laporanResult.data : []);
-      setKwarranList(kwarranResult.data || []);
+      setKwarranList(
+        Array.isArray(kwarranResult.data) ? kwarranResult.data : []
+      );
       setGudepList(
-        Array.isArray(gudepResult.data)
-          ? gudepResult.data.filter((g) => g.useres?.role !== "admin")
-          : []
+        (Array.isArray(gudepResult.data) ? gudepResult.data : []).filter(
+          (g) => g.useres?.role !== "admin"
+        )
       );
       setError(null);
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError("Gagal mengambil data.");
+      setError(err.message || "Gagal mengambil data.");
     } finally {
       setLoading(false);
     }
@@ -67,23 +69,22 @@ const AdminLaporanGudep = () => {
   const headers = useMemo(
     () => [
       { key: "no", label: "No", width: "w-1/20" },
-      { key: "nama", label: "Pelapor", width: "w-3/20" }, // Adjusted width
+      { key: "nama", label: "Pelapor", width: "w-3/20" },
       { key: "asal", label: "Asal", width: "w-2/20" },
       { key: "email", label: "Email", width: "w-3/20" },
-      { key: "level", label: "Level Lap.", width: "w-2/20" }, // Adjusted width
-      { key: "targetDetail", label: "Target", width: "w-3/20" }, // Adjusted width
-      { key: "status", label: "Status", width: "w-2/20" }, // Adjusted width
-      { key: "createdAt", label: "Tgl Minta", width: "w-2/20" }, // Adjusted width
-      { key: "actions", label: "Aksi", width: "w-3/20" }, // Adjusted width
+      { key: "level", label: "Level Lap.", width: "w-2/20" },
+      { key: "targetDetail", label: "Target", width: "w-3/20" },
+      { key: "status", label: "Status", width: "w-2/20" },
+      { key: "createdAt", label: "Tgl Minta", width: "w-2/20" },
+      { key: "actions", label: "Aksi", width: "w-3/20" },
     ],
     []
   );
 
-  // Fungsi delete yang memanggil service
   const handleDeleteLaporanEntry = async (id) => {
-    const confirm = await Swal.fire({
-      title: "Yakin ingin menghapus?",
-      text: "Data permintaan laporan ini akan dihapus permanen.",
+    const confirmResult = await Swal.fire({
+      title: "Yakin hapus?",
+      text: "Permintaan laporan ini dan file terkait di Dropbox (jika terdeteksi pathnya) akan dihapus.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
@@ -91,14 +92,12 @@ const AdminLaporanGudep = () => {
       confirmButtonText: "Ya, hapus!",
       cancelButtonText: "Batal",
     });
-
-    if (confirm.isConfirmed) {
+    if (confirmResult.isConfirmed) {
       try {
-        await deleteLaporanService(id); // Memanggil fungsi service yang diimpor
-        setData((prev) => prev.filter((item) => item.id !== id));
+        await deleteLaporanService(id);
+        fetchInitialData();
         Swal.fire("Berhasil", "Permintaan laporan telah dihapus.", "success");
       } catch (err) {
-        console.error("Gagal hapus laporan:", err);
         Swal.fire(
           "Gagal",
           err.message || "Gagal menghapus permintaan laporan.",
@@ -117,29 +116,35 @@ const AdminLaporanGudep = () => {
     []
   );
   const handleLevelFilterChange = useCallback(
-    // Handler untuk filter level laporan
     (value) => setSelectedLevelFilter(value),
     []
+  );
+
+  const kwarranMap = useMemo(
+    () => new Map(kwarranList.map((k) => [k.id, k.nama])),
+    [kwarranList]
+  );
+  const gudepMap = useMemo(
+    () => new Map(gudepList.map((g) => [g.id, `${g.pangkalan || g.no_gudep}`])),
+    [gudepList]
   );
 
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase();
     return data.filter((item) => {
-      const searchableFields = [
-        item.nama || "",
-        item.asal || "",
-        item.email || "",
-        item.level || "",
-        item.status || "",
-      ];
-      // Tambahkan pencarian berdasarkan targetDetail jika ada
       let targetName = "";
       if (item.level === "kwarran")
         targetName = kwarranMap.get(item.target_id) || "";
       else if (item.level === "gudep")
         targetName = gudepMap.get(item.target_id) || "";
-      if (targetName) searchableFields.push(targetName);
-
+      const searchableFields = [
+        item.nama,
+        item.asal,
+        item.email,
+        item.level,
+        item.status,
+        targetName,
+      ].filter(Boolean);
       const matchesSearch = searchableFields.some((f) =>
         f.toLowerCase().includes(query)
       );
@@ -154,144 +159,24 @@ const AdminLaporanGudep = () => {
     searchQuery,
     selectedStatusFilter,
     selectedLevelFilter,
-    kwarranList,
-    gudepList,
-  ]); // kwarranList & gudepList sbg dependency
-
-  const kwarranMap = useMemo(
-    () => new Map(kwarranList.map((k) => [k.id, k.nama])),
-    [kwarranList]
-  );
-  const gudepMap = useMemo(
-    () => new Map(gudepList.map((g) => [g.id, `${g.pangkalan || g.no_gudep}`])), // Prioritaskan pangkalan
-    [gudepList]
-  );
-
-  const transformedData = useMemo(() => {
-    return filteredData.map((item, index) => {
-      let targetDetail = "-";
-      if (item.level === "kwarran")
-        targetDetail =
-          kwarranMap.get(item.target_id) || `ID Kwarran: ${item.target_id}`;
-      else if (item.level === "gudep")
-        targetDetail =
-          gudepMap.get(item.target_id) || `ID Gudep: ${item.target_id}`;
-      else if (item.level === "semua") targetDetail = "Semua Data";
-
-      const isLoading = reportLoadingId === item.id;
-
-      return {
-        no: index + 1,
-        id: item.id,
-        nama: item.nama || "-",
-        asal: item.asal || "-",
-        email: item.email || "-",
-        level: item.level || "-",
-        targetDetail,
-        status: item.status || "-",
-        createdAt: item.createdAt ? FormatDate(item.createdAt) : "-",
-        actions: (
-          <div className="flex gap-1 justify-center">
-            {item.status === "Menunggu" && (
-              <>
-                <button
-                  className="material-icons bg-green-500 p-1 rounded-md text-white hover:bg-green-600"
-                  onClick={() => handleSetujui(item.id)}
-                  title="Setujui & Proses Laporan"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "..." : "check_circle"}
-                </button>
-                <button
-                  className="material-icons bg-red-500 p-1 rounded-md text-white hover:bg-red-600"
-                  onClick={() => handleDeleteLaporanEntry(item.id)}
-                  title="Hapus Permintaan"
-                >
-                  delete
-                </button>
-              </>
-            )}
-            {item.status === "Setujui" && (
-              <>
-                <button
-                  className="material-icons bg-purple-600 p-1 rounded-md text-white hover:bg-purple-700"
-                  disabled={isLoading}
-                  onClick={() => handleDownloadHtmlReportFromList(item.id)} // Fungsi baru
-                  title="Generate & Unduh Laporan HTML"
-                >
-                  {isLoading ? "..." : "download"}
-                </button>
-                <button
-                  className="material-icons bg-blue-500 p-1 rounded-md text-white hover:bg-blue-600"
-                  onClick={() => handleSelesai(item.id)}
-                  title="Tandai Selesai (Manual)"
-                >
-                  done_all
-                </button>
-                <button
-                  className="material-icons bg-red-500 p-1 rounded-md text-white hover:bg-red-600"
-                  onClick={() => handleDeleteLaporanEntry(item.id)}
-                  title="Hapus Permintaan"
-                >
-                  delete
-                </button>
-              </>
-            )}
-            {(item.status === "Selesai" || item.status === "Error Generate") &&
-              item.pdf_path && (
-                <button
-                  className="material-icons bg-teal-500 p-1 rounded-md text-white hover:bg-teal-600"
-                  disabled={isLoading}
-                  onClick={() => handleDownloadExistingHtml(item.id)}
-                  title="Unduh Laporan HTML Tersimpan"
-                >
-                  {isLoading ? "..." : "file_download"}
-                </button>
-              )}
-            {(item.status === "Selesai" ||
-              item.status === "Error Generate") && (
-              <button
-                className="material-icons bg-red-500 p-1 rounded-md text-white hover:bg-red-600"
-                onClick={() => handleDeleteLaporanEntry(item.id)}
-                title="Hapus Permintaan"
-              >
-                delete
-              </button>
-            )}
-          </div>
-        ),
-      };
-    });
-  }, [filteredData, kwarranMap, gudepMap, reportLoadingId]); // reportLoadingId dependency
-
-  const statusOptions = [
-    { id: "", value: "", label: "Semua Status" }, // Opsi default
-    { id: "Menunggu", value: "Menunggu", label: "Menunggu" },
-    { id: "Setujui", value: "Setujui/Proses" },
-    { id: "Selesai", value: "Selesai", label: "Selesai" },
-    { id: "Error Generate", value: "Error Generate", label: "Error Generate" },
-  ];
-
-  const levelOptions = [
-    { id: "semua", value: "semua", label: "Semua Level" },
-    { id: "kwarran", value: "kwarran", label: "Kwarran" },
-    { id: "gudep", value: "gudep", label: "Gudep" },
-  ];
+    kwarranMap,
+    gudepMap,
+  ]);
 
   const handleSetujui = async (id) => {
     setReportLoadingId(id);
     try {
       await approveLaporanStatusOnly(id, "Setujui");
-      await fetchInitialData(); // Refresh data
+      fetchInitialData();
       Swal.fire(
         "Berhasil",
-        "Status laporan diperbarui menjadi 'Setujui/Proses'. Siap untuk di-generate.",
+        "Status diperbarui. Laporan PDF siap di-generate.",
         "success"
       );
     } catch (err) {
       Swal.fire(
         "Gagal",
-        err.message || "Tidak bisa memperbarui status laporan.",
+        err.message || "Tidak bisa memperbarui status.",
         "error"
       );
     } finally {
@@ -299,16 +184,12 @@ const AdminLaporanGudep = () => {
     }
   };
 
-  const handleSelesai = async (id) => {
+  const handleSelesaiManual = async (id) => {
     setReportLoadingId(id);
     try {
       await approveLaporanStatusOnly(id, "Selesai");
-      await fetchInitialData(); // Refresh data
-      Swal.fire(
-        "Berhasil",
-        "Status laporan diperbarui menjadi 'Selesai'.",
-        "success"
-      );
+      fetchInitialData();
+      Swal.fire("Berhasil", "Status laporan ditandai 'Selesai'.", "success");
     } catch (err) {
       Swal.fire(
         "Gagal",
@@ -320,21 +201,20 @@ const AdminLaporanGudep = () => {
     }
   };
 
-  // Handler untuk men-generate dan mengunduh HTML dari list laporan (status "Setujui")
-  const handleDownloadHtmlReportFromList = async (laporanId) => {
+  const handleGenerateAndDownloadPdfFromList = async (laporanId) => {
     setReportLoadingId(laporanId);
     try {
-      const result = await generateAndDownloadHtmlReport(laporanId); // Menggunakan fungsi service yang sesuai
+      const result = await generateAndDownloadPdfReport(laporanId);
       Swal.fire(
-        "Berhasil",
-        result.message || "Laporan HTML berhasil diunduh!",
-        "success"
+        "Info",
+        result.message || "Proses unduh laporan PDF dari Dropbox dimulai.",
+        "info"
       );
+      fetchInitialData();
     } catch (err) {
-      console.error("Gagal unduh Laporan HTML dari list:", err);
       Swal.fire(
         "Gagal",
-        err.message || "Gagal mengunduh Laporan HTML.",
+        err.message || "Gagal mengunduh laporan PDF dari Dropbox.",
         "error"
       );
     } finally {
@@ -342,17 +222,19 @@ const AdminLaporanGudep = () => {
     }
   };
 
-  // Handler untuk mengunduh HTML yang sudah ada (status "Selesai" atau "Error Generate" jika ada path)
-  const handleDownloadExistingHtml = async (laporanId) => {
+  const handleDownloadExistingPdf = async (laporanId) => {
     setReportLoadingId(laporanId);
     try {
-      await downloadOrViewSavedHtmlReport(laporanId);
-      // Tidak perlu Swal success karena service sudah menangani trigger download
+      const result = await downloadOrViewSavedPdfReport(laporanId);
+      Swal.fire(
+        "Info",
+        result.message || "Proses unduh laporan PDF dari Dropbox dimulai.",
+        "info"
+      );
     } catch (err) {
-      console.error("Gagal unduh Laporan HTML yang ada:", err);
       Swal.fire(
         "Gagal",
-        err.message || "Gagal mengunduh Laporan HTML yang sudah ada.",
+        err.message || "Gagal mengunduh laporan PDF yang ada dari Dropbox.",
         "error"
       );
     } finally {
@@ -360,8 +242,121 @@ const AdminLaporanGudep = () => {
     }
   };
 
-  // Handler untuk generate HTML langsung dari filter
-  const handleGenerateDirectHtmlReport = useCallback(async () => {
+  const transformedData = useMemo(() => {
+    return filteredData.map((item, index) => {
+      let targetDetail = "-";
+      if (item.level === "kwarran")
+        targetDetail =
+          kwarranMap.get(item.target_id) || `ID: ${item.target_id}`;
+      else if (item.level === "gudep")
+        targetDetail = gudepMap.get(item.target_id) || `ID: ${item.target_id}`;
+      else if (item.level === "semua") targetDetail = "Semua Data";
+      const isLoading = reportLoadingId === item.id;
+      return {
+        no: index + 1,
+        id: item.id,
+        nama: item.nama || "-",
+        asal: item.asal || "-",
+        email: item.email || "-",
+        level: item.level || "-",
+        targetDetail,
+        status: item.status || "-",
+        createdAt: item.createdAt ? FormatDate(item.createdAt) : "-",
+        actions: (
+          <div className="flex gap-1 justify-center flex-wrap">
+            {item.status === "Menunggu" && (
+              <>
+                <button
+                  className="material-icons bg-green-500 p-1 rounded-md text-white hover:bg-green-600 text-sm"
+                  onClick={() => handleSetujui(item.id)}
+                  title="Setujui & Siapkan Laporan"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "..." : "check_circle"}
+                </button>
+                <button
+                  className="material-icons bg-red-500 p-1 rounded-md text-white hover:bg-red-600 text-sm"
+                  onClick={() => handleDeleteLaporanEntry(item.id)}
+                  title="Hapus Permintaan"
+                >
+                  delete
+                </button>
+              </>
+            )}
+            {item.status === "Setujui" && (
+              <>
+                <button
+                  className="material-icons bg-purple-600 p-1 rounded-md text-white hover:bg-purple-700 text-sm"
+                  disabled={isLoading}
+                  onClick={() => handleGenerateAndDownloadPdfFromList(item.id)}
+                  title="Generate & Unduh PDF ke Dropbox"
+                >
+                  {isLoading ? "..." : "cloud_upload"}
+                </button>
+                <button
+                  className="material-icons bg-blue-500 p-1 rounded-md text-white hover:bg-blue-600 text-sm"
+                  onClick={() => handleSelesaiManual(item.id)}
+                  title="Tandai Selesai (Manual)"
+                >
+                  done_all
+                </button>
+                <button
+                  className="material-icons bg-red-500 p-1 rounded-md text-white hover:bg-red-600 text-sm"
+                  onClick={() => handleDeleteLaporanEntry(item.id)}
+                  title="Hapus Permintaan"
+                >
+                  delete
+                </button>
+              </>
+            )}
+            {(item.status === "Selesai" || item.status === "Error Generate") &&
+              item.pdf_path && (
+                <button
+                  className="material-icons bg-teal-500 p-1 rounded-md text-white hover:bg-teal-600 text-sm"
+                  disabled={isLoading}
+                  onClick={() => handleDownloadExistingPdf(item.id)}
+                  title="Unduh Ulang PDF dari Dropbox"
+                >
+                  {isLoading ? "..." : "file_download"}
+                </button>
+              )}
+            {(item.status === "Selesai" ||
+              item.status === "Error Generate") && (
+              <button
+                className="material-icons bg-red-500 p-1 rounded-md text-white hover:bg-red-600 text-sm ml-1"
+                onClick={() => handleDeleteLaporanEntry(item.id)}
+                title="Hapus Permintaan"
+              >
+                delete
+              </button>
+            )}
+            {item.status === "Error Generate" && !item.pdf_path && (
+              <button
+                className="material-icons bg-orange-500 p-1 rounded-md text-white hover:bg-orange-600 text-sm"
+                disabled={isLoading}
+                onClick={() => handleGenerateAndDownloadPdfFromList(item.id)}
+                title="Coba Generate & Unduh Ulang PDF ke Dropbox"
+              >
+                {isLoading ? "..." : "autorenew"}
+              </button>
+            )}
+          </div>
+        ),
+      };
+    });
+  }, [
+    filteredData,
+    kwarranMap,
+    gudepMap,
+    reportLoadingId,
+    handleSetujui,
+    handleDeleteLaporanEntry,
+    handleSelesaiManual,
+    handleGenerateAndDownloadPdfFromList,
+    handleDownloadExistingPdf,
+  ]);
+
+  const handleGenerateDirectPdfReport = useCallback(async () => {
     if (
       (directReportLevel === "kwarran" || directReportLevel === "gudep") &&
       !directReportTargetId
@@ -377,7 +372,7 @@ const AdminLaporanGudep = () => {
     }
     setDirectReportLoading(true);
     Swal.fire({
-      title: "Membuat Laporan HTML Langsung...",
+      title: "Membuat Laporan PDF & Upload ke Dropbox...",
       allowOutsideClick: false,
       didOpen: () => Swal.showLoading(),
     });
@@ -385,28 +380,26 @@ const AdminLaporanGudep = () => {
       const params = { level: directReportLevel };
       if (directReportLevel !== "semua") {
         params.targetId = directReportTargetId;
-        // Ambil nama untuk filename yang lebih baik
-        if (directReportLevel === "kwarran") {
-          const kwarran = kwarranList.find(
+        if (directReportLevel === "kwarran")
+          params.namaKwarran = kwarranList.find(
             (k) => k.id === directReportTargetId
-          );
-          params.namaKwarran = kwarran?.nama;
-        } else if (directReportLevel === "gudep") {
-          const gudep = gudepList.find((g) => g.id === directReportTargetId);
-          params.namaGudep = gudep?.pangkalan || gudep?.no_gudep;
-        }
+          )?.nama;
+        else if (directReportLevel === "gudep")
+          params.namaGudep = gudepList.find(
+            (g) => g.id === directReportTargetId
+          )?.pangkalan;
       }
-      const result = await generateDirectHtmlReportAndDownload(params); // Menggunakan fungsi service yang sesuai
-      Swal.close(); // Tutup loading Swal
+      const result = await generateDirectPdfReportAndDownload(params); // Panggil service PDF
+      Swal.close();
       Swal.fire(
-        "Berhasil",
-        result.message || "Laporan HTML berhasil diunduh!",
-        "success"
+        "Info",
+        result.message || "Proses unduh laporan PDF dari Dropbox dimulai.",
+        "info"
       );
     } catch (err) {
       Swal.fire(
         "Gagal!",
-        err.message || "Gagal membuat laporan HTML langsung.",
+        err.message || "Gagal membuat laporan PDF langsung.",
         "error"
       );
     } finally {
@@ -415,22 +408,38 @@ const AdminLaporanGudep = () => {
   }, [directReportLevel, directReportTargetId, kwarranList, gudepList]);
 
   const directReportTargetOptions = useMemo(() => {
-    if (directReportLevel === "kwarran") {
+    if (directReportLevel === "kwarran")
       return kwarranList.map((k) => ({ id: k.id, nama: k.nama, value: k.id }));
-    }
-    if (directReportLevel === "gudep") {
+    if (directReportLevel === "gudep")
       return gudepList.map((g) => ({
         id: g.id,
-        nama: `${g.pangkalan || g.no_gudep || "Tanpa Nama"} (${
-          kwarranMap.get(g.kwarran_id) || "Tanpa Kwarran"
+        nama: `${g.pangkalan || g.no_gudep || "N/A"} (${
+          kwarranMap.get(g.kwarran_id) || "-"
         })`,
         value: g.id,
       }));
-    }
     return [];
   }, [directReportLevel, kwarranList, gudepList, kwarranMap]);
 
-  const FilterDropdownsWithButton = (
+  const statusOptions = [
+    { id: "", value: "", label: "Filter Status" },
+    { id: "Menunggu", value: "Menunggu", label: "Menunggu" },
+    { id: "Setujui", value: "Setujui" },
+    { id: "Selesai", value: "Selesai" },
+    { id: "Error Generate", value: "Error Generate", label: "Error Generate" },
+  ];
+  const levelOptionsTableFilter = [
+    { id: "semua", value: "semua", label: "Filter Level" },
+    { id: "kwarran", value: "kwarran", label: "Kwarran" },
+    { id: "gudep", value: "gudep", label: "Gudep" },
+  ];
+  const levelOptionsDirect = [
+    { id: "semua", value: "semua", label: "Level: Semua" },
+    { id: "kwarran", value: "kwarran", label: "Level: Kwarran" },
+    { id: "gudep", value: "gudep", label: "Level: Gudep" },
+  ];
+
+  const FilterControls = (
     <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center w-full md:w-auto">
       <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
         <Dropdown
@@ -442,7 +451,7 @@ const AdminLaporanGudep = () => {
           className="w-full sm:w-auto md:min-w-[150px]"
         />
         <Dropdown
-          options={levelOptions} // Opsi untuk filter level tabel
+          options={levelOptionsTableFilter}
           selected={selectedLevelFilter}
           onChange={handleLevelFilterChange}
           placeholder="Filter Level Laporan"
@@ -450,16 +459,16 @@ const AdminLaporanGudep = () => {
           className="w-full sm:w-auto md:min-w-[150px]"
         />
       </div>
-      <div className="border-t md:border-t-0 md:border-l border-gray-300 my-2 md:my-0 md:mx-3"></div>
+      <div className="border-t md:border-t-0 md:border-l border-gray-300 my-2 md:my-0 md:mx-3 md:h-10 self-center"></div>
       <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-stretch">
         <Dropdown
-          options={levelOptions}
+          options={levelOptionsDirect}
           selected={directReportLevel}
-          onChange={(value) => {
-            setDirectReportLevel(value);
-            setDirectReportTargetId(""); // Reset target ID ketika level berubah
+          onChange={(v) => {
+            setDirectReportLevel(v);
+            setDirectReportTargetId("");
           }}
-          placeholder="Pilih Level Direct"
+          placeholder="Pilih Level Unduhan"
           id="direct-level-filter"
           className="w-full sm:w-auto md:min-w-[150px]"
         />
@@ -468,9 +477,7 @@ const AdminLaporanGudep = () => {
             options={directReportTargetOptions}
             selected={directReportTargetId}
             onChange={setDirectReportTargetId}
-            placeholder={`Pilih Target ${
-              directReportLevel === "kwarran" ? "Kwarran" : "Gudep"
-            }`}
+            placeholder={`Pilih Target`}
             id="direct-target-filter"
             className="w-full sm:w-auto md:min-w-[200px]"
             disabled={
@@ -481,12 +488,12 @@ const AdminLaporanGudep = () => {
           />
         )}
         <button
-          onClick={handleGenerateDirectHtmlReport} // Menggunakan fungsi yang sudah diubah
+          onClick={handleGenerateDirectPdfReport}
           disabled={directReportLoading || loading}
-          className="bg-[#9500FF] hover:bg-[#7a00cc] text-white font-bold py-2 px-4 rounded-md disabled:opacity-50 h-10 w-full sm:w-auto" // Responsif width
-          title="Buat & Unduh Laporan HTML Langsung"
+          className="bg-[#9500FF] hover:bg-[#7a00cc] text-white font-bold py-2 px-4 rounded-md disabled:opacity-50 h-10 w-full sm:w-auto text-sm"
+          title="Buat & Unduh Laporan PDF Langsung"
         >
-          {directReportLoading ? "Memproses..." : "Unduh Langsung"}
+          {directReportLoading ? "Memproses..." : "Unduh Langsung PDF"}
         </button>
       </div>
     </div>
@@ -501,7 +508,7 @@ const AdminLaporanGudep = () => {
             showSearch
             searchValue={searchQuery}
             onSearchChange={handleSearchChange}
-            additionalControls={FilterDropdownsWithButton}
+            additionalControls={FilterControls}
           />
           {loading ? (
             <LoadingSpinner />
@@ -513,7 +520,7 @@ const AdminLaporanGudep = () => {
                 searchQuery ||
                 selectedStatusFilter ||
                 selectedLevelFilter !== "semua"
-                  ? "Data laporan tidak ditemukan dengan filter yang diterapkan."
+                  ? "Data laporan tidak ditemukan."
                   : "Belum ada data permintaan laporan."
               }
             />
