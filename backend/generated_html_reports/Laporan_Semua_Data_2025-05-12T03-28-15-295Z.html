@@ -1,0 +1,135 @@
+<!-- report-template.html (Template Umum) -->
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Laporan Lengkap Data Pramuka Balikpapan</title>
+    <style>
+      @page {
+        size: A4 landscape; /* Set paper size to A4 and orientation to landscape */
+        margin: 15mm; /* Set margin for the PDF, reduced from 20mm */
+      }
+      body {
+        font-family: Arial, sans-serif; /* Set a default font */
+        font-size: 10px; /* Reduced font size */
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: auto; /* Changed to auto for better handling of content */
+      }
+      th,
+      td {
+        border: 1px solid black;
+        padding: 5px; /* Reduced padding */
+        text-align: left;
+        vertical-align: top;
+        word-wrap: break-word; /* Allow text wrapping */
+        white-space: normal; /* Allow text wrapping */
+      }
+      h3 {
+        page-break-after: avoid; /* Prevent page break after headings */
+        font-size: 12px; /* Reduced heading size */
+        margin-top: 10px;
+        margin-bottom: 5px;
+      }
+      h2 {
+        font-size: 14px; /* Reduced heading size */
+        margin-top: 5px;
+        margin-bottom: 5px;
+      }
+      p {
+        font-size: 10px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+      }
+      @media print {
+        body {
+          margin: 0; /* Remove margin for print */
+        }
+        table {
+          page-break-inside: auto; /* Allow page breaks inside tables */
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Laporan Lengkap Data Pramuka Balikpapan</h2>
+    <p>Data ini diambil pada tanggal: Senin, 12 Mei 2025 pukul 11.28.15 WITA</p>
+
+    <h3>Data Kwarran</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 10%">Kode</th>
+          <th style="width: 20%">Nama</th>
+          <th style="width: 20%">Ketua Kwarran</th>
+          <th style="width: 20%">Ketua DKR</th>
+          <th style="width: 25%">Email</th>
+          <th style="width: 5%">J. Gudep</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>16.05.01</td><td>Barat</td><td>1</td><td>1</td><td>kwarran1@example.com</td><td>1</td></tr><tr><td>16.05.02</td><td>Kota</td><td>2</td><td>2</td><td>kwarran2@example.com</td><td>1</td></tr><tr><td>16.05.03</td><td>Selatan</td><td>3</td><td>3</td><td>kwarran3@example.com</td><td>1</td></tr><tr><td>16.05.04</td><td>Tengah</td><td>45</td><td>4</td><td>kwarran4@example.com</td><td>1</td></tr><tr><td>16.05.05</td><td>Timur</td><td>5</td><td>5</td><td>kwarran5@example.com</td><td>0</td></tr><tr><td>16.05.06</td><td>Utara</td><td>6</td><td>6</td><td>kwarran6@example.com</td><td>2</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Data Gudep</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 3%">No</th>
+          <th style="width: 8%">Kwarran</th>
+          <th style="width: 7%">No. Gudep</th>
+          <th style="width: 7%">Tingkatan</th>
+          <th style="width: 10%">Pangkalan</th>
+          <th style="width: 10%">Ambalan</th>
+          <th style="width: 10%">Mabigus</th>
+          <th style="width: 10%">Pembina</th>
+          <th style="width: 10%">Pelatih</th>
+          <th style="width: 18%">Email</th>
+          <th style="width: 3%">JL</th>
+          <th style="width: 3%">JP</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Barat</td><td>123</td><td>Penegak/Pandega</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0</td><td>0</td></tr><tr><td>2</td><td>Kota</td><td>05.025 / 05.026</td><td>Penegak/Pandega</td><td>qweofhw</td><td>qwdqw</td><td>123123</td><td>12312</td><td>12312</td><td>-</td><td>3</td><td>1</td></tr><tr><td>3</td><td>Selatan</td><td>123</td><td>Pandega</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0</td><td>2</td></tr><tr><td>4</td><td>Tengah</td><td>123</td><td>Penggalang</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0</td><td>0</td></tr><tr><td>5</td><td>Utara</td><td>123</td><td>Siaga</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0</td><td>0</td></tr><tr><td>6</td><td>Utara</td><td>124141</td><td>Penggalang</td><td>qdqfqw</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1</td><td>2</td></tr><tr><td>7</td><td>-</td><td>-</td><td>Penegak/Pandega</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0</td><td>0</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Data Geografis</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 3%">No</th>
+          <th style="width: 15%">Kwarran</th>
+          <th style="width: 15%">No. Gudep</th>
+          <th style="width: 30%">Koordinat</th>
+          <th style="width: 40%">Alamat</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Barat</td><td>123</td><td>-1.2429025392299031, 116.83942794799806</td><td>-</td></tr><tr><td>2</td><td>Kota</td><td>05.025 / 05.026</td><td>-1.274252119228632, 116.83818399358223</td><td>Deket Sini </td></tr><tr><td>3</td><td>Selatan</td><td>123</td><td>-1.2506254724079666, 116.85470581054688</td><td>21412</td></tr><tr><td>4</td><td>Tengah</td><td>123</td><td>-1.2753387051710048, 116.8121337890625</td><td>-</td></tr><tr><td>5</td><td>Utara</td><td>123</td><td>-1.2475363018559502, 116.90689086914064</td><td>-</td></tr><tr><td>6</td><td>Utara</td><td>124141</td><td>-1.2692462286788087, 116.83075904846193</td><td>Ddeket</td></tr><tr><td>7</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Data Kegiatan</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 3%">No</th>
+          <th style="width: 20%">Nama Kegiatan</th>
+          <th style="width: 12%">Tanggal Mulai</th>
+          <th style="width: 12%">Tanggal Selesai</th>
+          <th style="width: 20%">Tempat</th>
+          <th style="width: 15%">Tingkat</th>
+          <th style="width: 21%">Penyelenggara</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Perkemahan Satruan Karya </td><td>16/4/2025</td><td>16/4/2025</td><td>Paser</td><td>Daerah</td><td>DKD Kalimantan Timur</td></tr><tr><td>2</td><td>Perkemahan Wirakarya Daerah</td><td>15/4/2025</td><td>16/4/2025</td><td>Bontang</td><td>Nasional</td><td>DKD Kalimantan Timur</td></tr><tr><td>3</td><td>dd</td><td>11/4/2025</td><td>19/4/2025</td><td>d</td><td>Cabang</td><td>dd</td></tr><tr><td>4</td><td>dw</td><td>10/4/2025</td><td>19/4/2025</td><td>wd</td><td>Ranting</td><td>wd</td></tr><tr><td>5</td><td>Perkemahan Bela Negara</td><td>9/4/2025</td><td>9/4/2025</td><td>Sanggata</td><td>Daerah</td><td>DKD Kaltim</td></tr>
+      </tbody>
+    </table>
+  </body>
+</html>

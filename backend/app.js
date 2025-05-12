@@ -6,6 +6,7 @@ const axios = require("axios");
 require("dotenv").config();
 const db = require("./src/models");
 const sequelize = require("./config/db");
+const path = require("path");
 
 // --- Initializations ---
 const app = express();
@@ -18,6 +19,10 @@ app.use(express.json());
 // --- File Upload Configuration (Multer) ---
 const storage = multer.memoryStorage(); // Simpan file di memori
 const upload = multer({ storage: storage });
+app.use(
+  "/reports",
+  express.static(path.join(__dirname, "generated_html_reports"))
+);
 
 // --- Custom Middleware: Imgur Upload ---
 const uploadToImgur = async (req, res, next) => {
