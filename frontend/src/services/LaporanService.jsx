@@ -11,9 +11,7 @@ async function handleFetchError(response) {
     if (contentType && contentType.includes("application/json")) {
       errorData = await response.json();
     } else {
-      // Coba baca sebagai teks jika bukan JSON
       const textError = await response.text();
-      // Berikan pesan yang lebih informatif jika ada HTML error (seperti halaman 404 default)
       if (textError && textError.toLowerCase().includes("<html")) {
         errorData.message = `Server error ${response.status} (HTML response). Check backend route/logic.`;
       } else if (textError) {
@@ -74,53 +72,61 @@ export const createLaporan = async (data) => {
   }
 };
 
-// Fungsi untuk generate PDF dari Laporan ID yang sudah ada
-export const streamPdfLaporan = async (laporanId) => {
+// Fungsi untuk generate HTML dari Laporan ID yang sudah ada dan mengunduhnya
+export const generateAndDownloadHtmlReport = async (laporanId) => {
   try {
     if (!laporanId)
-      throw new Error("ID Laporan diperlukan untuk streaming PDF.");
+      throw new Error("ID Laporan diperlukan untuk generate HTML.");
+
+    // Panggil endpoint backend yang baru
     const response = await fetch(
-      `${API_URL}laporan/${laporanId}/approve-generate`,
+      `${API_URL}laporan/${laporanId}/approve-generate-html`, // Endpoint diubah
       {
-        method: "PUT",
+        method: "PUT", // Metode tetap PUT sesuai definisi rute backend
         headers: { "Content-Type": "application/json" },
       }
     );
 
     if (!response.ok) {
-      await handleFetchError(response); // Akan melempar error jika status tidak OK
+      await handleFetchError(response);
     }
 
-    // Proses jika response OK (PDF diterima)
-    const blob = await response.blob();
-    if (blob.size < 100) {
-      console.warn(
-        "Received PDF blob is very small or empty, size:",
-        blob.size
-      );
+    // Backend akan merespons dengan JSON yang berisi filePath
+    const result = await response.json();
+    if (result && result.filePath) {
+      // Buat link untuk mengunduh file HTML yang disimpan di server
+      // Asumsi server statis dikonfigurasi untuk menyajikan dari 'generated_html_reports' di /reports
+      // atau Anda bisa menggunakan API_URL jika path absolutnya diketahui
+      const fileUrlFromServer = `${API_URL.replace("/api/", "/")}${
+        result.filePath
+      }`; // Sesuaikan jika API_URL berbeda dari base URL server
+
+      const fileLink = document.createElement("a");
+      fileLink.href = fileUrlFromServer; // Langsung ke file di server
+
+      // Ekstrak nama file dari filePath
+      const fileName =
+        result.filePath.split("/").pop() ||
+        `laporan-${laporanId}-${Date.now()}.html`;
+
+      fileLink.setAttribute("download", fileName);
+      fileLink.setAttribute("target", "_blank"); // Opsional: buka di tab baru jika tidak langsung download
+      document.body.appendChild(fileLink);
+      fileLink.click();
+      document.body.removeChild(fileLink);
+
+      return {
+        success: true,
+        message:
+          "Laporan HTML berhasil di-generate. Link unduhan/tampilan telah dipicu.",
+        filePath: result.filePath,
+      };
+    } else {
+      throw new Error("Respon dari server tidak menyertakan path file HTML.");
     }
-
-    const fileURL = window.URL.createObjectURL(blob);
-    const fileLink = document.createElement("a");
-    fileLink.href = fileURL;
-
-    const contentDisposition = response.headers.get("content-disposition");
-    let fileName = `laporan-${laporanId}-${Date.now()}.pdf`; // Default
-    if (contentDisposition) {
-      const fileNameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-      if (fileNameMatch && fileNameMatch.length === 2)
-        fileName = fileNameMatch[1];
-    }
-
-    fileLink.setAttribute("download", fileName);
-    document.body.appendChild(fileLink);
-    fileLink.click();
-    document.body.removeChild(fileLink);
-    window.URL.revokeObjectURL(fileURL);
-    return { success: true, message: "PDF berhasil diunduh." };
   } catch (error) {
-    console.error("Error in streamPdfLaporan service:", error);
-    throw error; // Lempar error agar bisa ditangani oleh komponen UI
+    console.error("Error in generateAndDownloadHtmlReport service:", error);
+    throw error;
   }
 };
 
@@ -134,6 +140,7 @@ export const deleteLaporan = async (id) => {
     });
     if (!response.ok) await handleFetchError(response);
     if (response.status === 204)
+      // No Content, berhasil dihapus
       return { message: "Laporan berhasil dihapus." };
     return await response.json();
   } catch (error) {
@@ -150,7 +157,7 @@ export const approveLaporanStatusOnly = async (id, newStatus) => {
     const response = await fetch(`${API_URL}laporan/${id}/approve`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }), // Kirim status baru di body
+      body: JSON.stringify({ status: newStatus }),
     });
     if (!response.ok) await handleFetchError(response);
     return await response.json();
@@ -160,22 +167,16 @@ export const approveLaporanStatusOnly = async (id, newStatus) => {
   }
 };
 
-/**
- *
- * Helper function untuk generate nama file yang lebih deskriptif.
- */
-
-// Fungsi untuk memformat tanggal dengan format dd-mm-yyyy
 const feFormatTanggalFallback = () => {
   const today = new Date();
   const day = String(today.getDate()).padStart(2, "0");
-  const month = String(today.getMonth() + 1).padStart(2, "0"); // Bulan mulai dari 0
+  const month = String(today.getMonth() + 1).padStart(2, "0");
   const year = today.getFullYear();
-
   return `${day}-${month}-${year}`;
 };
 
-const generateFilename = (params) => {
+// Diubah untuk menghasilkan nama file .html
+const generateHtmlFilename = (params) => {
   const tanggalFormatted = feFormatTanggalFallback();
   let judulLaporanFE = "Laporan";
 
@@ -192,84 +193,130 @@ const generateFilename = (params) => {
       params.targetId ? ` ID ${params.targetId}` : ""
     }`;
   }
-
-  return `${judulLaporanFE} ( ${tanggalFormatted} ).pdf`;
+  return `${judulLaporanFE} ( ${tanggalFormatted} ).html`; // Ekstensi .html
 };
 
-/**
- * Modifikasi generateDirectPdfReport untuk menggunakan fungsi generateFilename
- */
-export const generateDirectPdfReport = async (params) => {
+// Diubah untuk generate HTML
+export const generateDirectHtmlReportAndDownload = async (params) => {
   if (!params || !params.level) {
     console.error(
-      "❌ Parameter 'level' wajib diisi untuk generateDirectPdfReport."
+      "❌ Parameter 'level' wajib diisi untuk generateDirectHtmlReportAndDownload."
     );
     throw new Error("Parameter 'level' wajib diisi.");
   }
 
   try {
     const backendParams = { level: params.level, targetId: params.targetId };
-    const response = await fetch(`${API_URL}laporan/generate-direct-pdf`, {
+    const response = await fetch(`${API_URL}laporan/generate-direct-html`, {
+      // Endpoint diubah
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(backendParams),
     });
 
     if (!response.ok) {
-      let errorMessage = `Gagal mengambil PDF. Status: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch (e) {
-        // Jika parsing JSON gagal, biarkan errorMessage default
-      }
-      console.error(`❌ Error dari server: ${errorMessage}`);
       await handleFetchError(response);
-      return;
     }
 
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
+    // Backend akan merespons dengan JSON yang berisi filePath
+    const result = await response.json();
+    if (result && result.filePath) {
+      // Asumsi server statis dikonfigurasi untuk menyajikan dari 'generated_html_reports' di /reports
+      // atau Anda bisa menggunakan API_URL jika path absolutnya diketahui dan dapat diakses
+      const fileUrlFromServer = `${API_URL.replace("/api/", "/")}${
+        result.filePath
+      }`; // Sesuaikan jika API_URL berbeda dari base URL server
 
-    let downloadFilename;
+      const fileLink = document.createElement("a");
+      fileLink.href = fileUrlFromServer;
 
-    // Coba ambil nama file dari header Content-Disposition (dari server)
-    const disposition = response.headers.get("Content-Disposition");
-    if (disposition && disposition.includes("attachment")) {
-      const filenameMatch = disposition.match(
-        /filename\*?=['"]?(?:UTF-\d['"]*)?([^;\r\n"']*)['"]?;?/i
-      );
-      if (filenameMatch && filenameMatch[1]) {
-        downloadFilename = decodeURIComponent(filenameMatch[1]);
-        console.log("Menggunakan nama file dari server:", downloadFilename);
-      }
+      // Ekstrak nama file dari filePath atau generate fallback
+      const fileName =
+        result.filePath.split("/").pop() || generateHtmlFilename(params);
+
+      fileLink.setAttribute("download", fileName);
+      fileLink.setAttribute("target", "_blank");
+      document.body.appendChild(fileLink);
+      fileLink.click();
+      document.body.removeChild(fileLink);
+
+      return {
+        success: true,
+        message:
+          "Laporan HTML berhasil di-generate dan link unduhan telah dipicu.",
+        filePath: result.filePath,
+      };
+    } else {
+      throw new Error("Respon dari server tidak menyertakan path file HTML.");
     }
-
-    // Jika nama file dari server tidak ditemukan, buat nama file dengan generateFilename
-    if (!downloadFilename) {
-      console.log(
-        "Nama file dari server tidak ditemukan, menggunakan fallback."
-      );
-      downloadFilename = generateFilename(params);
-    }
-
-    a.download = downloadFilename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   } catch (error) {
-    console.error("❌ Gagal download langsung PDF:", error.message || error);
+    console.error("❌ Gagal download langsung HTML:", error.message || error);
+    throw error;
   }
 };
 
-// Fungsi untuk mengunduh PDF Kwarran atau Gudep
-export const downloadPdfKwarran = async (targetId, namaKwarran) => {
-  await generateDirectPdfReport({ level: "kwarran", targetId, namaKwarran });
+// Fungsi helper untuk mengunduh/menampilkan file HTML berdasarkan path dari server
+export const downloadOrViewSavedHtmlReport = async (laporanId) => {
+  try {
+    if (!laporanId) throw new Error("ID Laporan diperlukan.");
+    const response = await fetch(
+      `${API_URL}laporan/adhoc-download-html/${laporanId}`,
+      {
+        method: "GET", // Sesuai dengan rute backend
+      }
+    );
+
+    if (!response.ok) {
+      await handleFetchError(response);
+    }
+
+    // Karena backend akan mengirim file langsung, kita tangani sebagai blob
+    const blob = await response.blob();
+    const fileURL = window.URL.createObjectURL(blob);
+    const fileLink = document.createElement("a");
+    fileLink.href = fileURL;
+
+    let fileName = `laporan_adhoc_${laporanId}.html`; // Default
+    const contentDisposition = response.headers.get("content-disposition");
+    if (contentDisposition) {
+      const fileNameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+      if (fileNameMatch && fileNameMatch.length === 2)
+        fileName = fileNameMatch[1];
+    }
+
+    fileLink.setAttribute("download", fileName);
+    // Jika Anda ingin membuka di tab baru daripada mengunduh:
+    // fileLink.setAttribute("target", "_blank");
+    // fileLink.removeAttribute("download");
+
+    document.body.appendChild(fileLink);
+    fileLink.click();
+    document.body.removeChild(fileLink);
+    window.URL.revokeObjectURL(fileURL);
+
+    return {
+      success: true,
+      message: "Laporan HTML berhasil diunduh/ditampilkan.",
+    };
+  } catch (error) {
+    console.error("Error downloading/viewing adhoc HTML report:", error);
+    throw error;
+  }
 };
 
-export const downloadPdfGudep = async (targetId, namaGudep) => {
-  await generateDirectPdfReport({ level: "gudep", targetId, namaGudep });
+// Fungsi helper untuk memanggil generateDirectHtmlReportAndDownload
+export const downloadHtmlKwarran = async (targetId, namaKwarran) => {
+  return await generateDirectHtmlReportAndDownload({
+    level: "kwarran",
+    targetId,
+    namaKwarran,
+  });
+};
+
+export const downloadHtmlGudep = async (targetId, namaGudep) => {
+  return await generateDirectHtmlReportAndDownload({
+    level: "gudep",
+    targetId,
+    namaGudep,
+  });
 };

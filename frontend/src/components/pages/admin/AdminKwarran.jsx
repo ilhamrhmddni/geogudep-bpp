@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { deleteKwarran, fetchKwarran } from "../../../services/KwarranService";
-import { generateDirectPdfReport } from "../../../services/LaporanService";
+// Impor fungsi yang sudah disesuaikan untuk HTML
+import { downloadHtmlKwarran } from "../../../services/LaporanService";
 import AdminHeader from "../../atoms/AdminHeader";
 import ErrorMessage from "../../atoms/ErrorMessage";
 import LoadingSpinner from "../../atoms/LoadingSpinner";
@@ -15,7 +16,8 @@ const AdminKwarran = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [pdfLoadingId, setPdfLoadingId] = useState(false);
+  // State untuk report generation loading
+  const [reportLoadingId, setReportLoadingId] = useState(null);
 
   const navigate = useNavigate();
 
@@ -42,31 +44,34 @@ const AdminKwarran = () => {
   const headers = useMemo(
     () => [
       { key: "no", label: "No", width: "w-1/12" },
-      { key: "kode", label: "Kode", width: "w-2/12" },
+      { key: "kode", label: "Kode", width: "w-1/12" }, // Adjusted width
       { key: "nama", label: "Nama", width: "w-2/12" },
-      { key: "ketua_kwarran", label: "Ketua Kwarran", width: "w-3/12" },
+      { key: "ketua_kwarran", label: "Ketua Kwarran", width: "w-2/12" }, // Adjusted width
       { key: "ketua_dkr", label: "Ketua DKR", width: "w-2/12" },
-      { key: "jumlah_gudep", label: "Jumlah Gudep", width: "w-1/12" },
+      { key: "jumlah_gudep", label: "Jml Gudep", width: "w-1/12" }, // Adjusted label
       { key: "email", label: "Email", width: "w-2/12" },
-      { key: "actions", label: "Aksi", width: "w-2/12" },
-      { key: "download", label: "Download", width: "w-1/12" }, // Tambahan
+      { key: "actions", label: "Aksi CRUD", width: "w-1/12" }, // Adjusted width
+      { key: "download", label: "Unduh Laporan", width: "w-1/12" },
     ],
     []
   );
 
-  const handleDownloadPdf = async (targetId) => {
-    setPdfLoadingId(targetId);
+  // Fungsi untuk mengunduh laporan HTML
+  const handleDownloadHtml = async (targetId, namaKwarran) => {
+    setReportLoadingId(targetId); // Set loading state
     try {
-      await generateDirectPdfReport({
-        level: "kwarran",
-        targetId,
-      });
-      Swal.fire("Berhasil", "PDF berhasil diunduh!", "success");
+      // Panggil service yang sudah diupdate untuk HTML
+      await downloadHtmlKwarran(targetId, namaKwarran);
+      Swal.fire("Berhasil", "Laporan HTML berhasil diunduh!", "success");
     } catch (err) {
-      console.error("❌ Gagal download PDF:", err);
-      Swal.fire("Gagal", "Gagal mengunduh PDF.", "error");
+      console.error("❌ Gagal download Laporan HTML:", err);
+      Swal.fire(
+        "Gagal",
+        err.message || "Gagal mengunduh Laporan HTML.",
+        "error"
+      );
     } finally {
-      setPdfLoadingId(null);
+      setReportLoadingId(null); // Reset loading state
     }
   };
 
@@ -111,7 +116,7 @@ const AdminKwarran = () => {
         }
       }
     },
-    [setData]
+    [setData] // Hanya setData karena fetchData tidak dipanggil langsung di sini
   );
 
   // Filter data
@@ -126,23 +131,24 @@ const AdminKwarran = () => {
       .map((item, index) => ({
         ...item,
         no: index + 1,
+        jumlah_gudep: item.jumlah_gudep ?? 0, // Pastikan ada nilai default jika null
+        // Render tombol download di sini, bukan di TableCRUD
         download: (
           <button
-            onClick={() => handleDownloadPdf(item.id)}
+            onClick={() => handleDownloadHtml(item.id, item.nama)} // Panggil handleDownloadHtml
             className="material-icons bg-[#9500FF] text-white p-1 rounded hover:bg-[#7a00cc]"
-            disabled={pdfLoadingId === item.id}
+            disabled={reportLoadingId === item.id} // Gunakan reportLoadingId
           >
-            {pdfLoadingId === item.id ? "..." : "download"}
+            {reportLoadingId === item.id ? "..." : "download"}
           </button>
         ),
       }));
-  }, [data, searchQuery]);
+  }, [data, searchQuery, reportLoadingId]); // Tambahkan reportLoadingId sebagai dependency
 
   return (
     <AdminTemplate>
       <div className="md:ml-18 rounded-xl shadow-xl mt-10 md:mt-0">
         <div className="p-4">
-          {/* Standardized Header */}
           <AdminHeader
             title="Data Kwarran"
             showSearch={true}
@@ -151,8 +157,6 @@ const AdminKwarran = () => {
             onSearchChange={(e) => setSearchQuery(e.target.value)}
             onAddClick={() => navigate("/admin/kwarran/add")}
           />
-
-          {/* Content */}
           <div className="mt-6 overflow-x-auto">
             {loading ? (
               <LoadingSpinner />
@@ -166,6 +170,11 @@ const AdminKwarran = () => {
                 data={filteredData}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                // Tombol download sudah dirender di dalam filteredData,
+                // jadi tidak perlu prop onDownload khusus di TableCRUD
+                // kecuali TableCRUD Anda didesain untuk menerima kolom 'download'
+                // atau memiliki prop onDownload terpisah.
+                // Jika TableCRUD menangani render kolom aksi secara internal, Anda mungkin perlu menyesuaikannya.
               />
             )}
           </div>

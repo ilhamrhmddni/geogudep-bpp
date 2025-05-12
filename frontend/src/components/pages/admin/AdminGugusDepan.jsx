@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import Swal from "sweetalert2"; // Import SweetAlert2 for notifications
+import Swal from "sweetalert2";
 import { fetchGugusdepan } from "../../../services/GugusdepanService";
 import { fetchKwarran } from "../../../services/KwarranService";
-import { generateDirectPdfReport } from "../../../services/LaporanService";
+// Impor fungsi yang sudah disesuaikan untuk HTML
+import { downloadHtmlGudep } from "../../../services/LaporanService";
 import AdminHeader from "../../atoms/AdminHeader";
 import DetailCell from "../../atoms/DetailCell";
 import Dropdown from "../../atoms/Dropdown";
@@ -22,8 +23,8 @@ const AdminGugusdepan = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // State for PDF generation
-  const [pdfLoadingId, setPdfLoadingId] = useState(null);
+  // State for report generation loading
+  const [reportLoadingId, setReportLoadingId] = useState(null); // Nama state diubah
 
   const fetchInitialData = useCallback(async () => {
     try {
@@ -61,7 +62,7 @@ const AdminGugusdepan = () => {
       { key: "email", label: "Email", width: "w-3/20" },
       { key: "detail", label: "Detail", width: "w-1/20" },
       { key: "tahun_update", label: "Tanggal Update", width: "w-1/20" },
-      { key: "actions", label: "Download", width: "w-1/20" }, // Add actions column
+      { key: "actions", label: "Unduh Laporan", width: "w-2/20" }, // Lebar kolom disesuaikan
     ],
     []
   );
@@ -83,6 +84,7 @@ const AdminGugusdepan = () => {
       data?.filter((item) => {
         const searchMatch =
           (item.no_gudep ?? "").toLowerCase().includes(query) ||
+          (item.pangkalan ?? "").toLowerCase().includes(query) || // Tambah pangkalan ke pencarian
           (item.mabigus ?? "").toLowerCase().includes(query) ||
           (item.pembina ?? "").toLowerCase().includes(query) ||
           (item.pelatih ?? "").toLowerCase().includes(query);
@@ -121,8 +123,8 @@ const AdminGugusdepan = () => {
           <DetailCell
             title="Lihat"
             details={[
-              { label: "Putra", value: item.jumlah_putra },
-              { label: "Putri", value: item.jumlah_putri },
+              { label: "Putra", value: item.jumlah_putra ?? "-" },
+              { label: "Putri", value: item.jumlah_putri ?? "-" },
             ]}
             position={positionValue}
           />
@@ -131,20 +133,22 @@ const AdminGugusdepan = () => {
           <DetailCell
             title="Lihat"
             details={[
-              { label: "Mabigus", value: item.mabigus },
-              { label: "Pembina", value: item.pembina },
-              { label: "Pelatih", value: item.pelatih },
+              { label: "Mabigus", value: item.mabigus ?? "-" },
+              { label: "Pembina", value: item.pembina ?? "-" },
+              { label: "Pelatih", value: item.pelatih ?? "-" },
             ]}
             position={positionValue}
           />
         ),
         actions: (
           <button
-            onClick={() => handleDownloadPdf(item.id)}
+            onClick={() =>
+              handleDownloadHtml(item.id, item.no_gudep || item.pangkalan)
+            } // Panggil handleDownloadHtml
             className="material-icons color-[#9500FF] bg-[#9500FF] p-1 rounded-md text-white align-middle hover:bg-[#7a00cc]"
-            disabled={pdfLoadingId === item.id}
+            disabled={reportLoadingId === item.id} // Gunakan reportLoadingId
           >
-            {pdfLoadingId === item.id ? "..." : "download"}
+            {reportLoadingId === item.id ? "..." : "download"}
           </button>
         ),
       };
@@ -155,22 +159,25 @@ const AdminGugusdepan = () => {
     selectedKwarran,
     selectedTingkatan,
     kwarranList,
-    pdfLoadingId,
+    reportLoadingId, // Dependensi diubah
   ]);
 
-  const handleDownloadPdf = async (targetId) => {
-    setPdfLoadingId(targetId);
+  // Fungsi untuk mengunduh laporan HTML
+  const handleDownloadHtml = async (targetId, namaGudep) => {
+    setReportLoadingId(targetId); // Set loading state
     try {
-      await generateDirectPdfReport({
-        level: "gudep",
-        targetId,
-      });
-      Swal.fire("Berhasil", "PDF berhasil diunduh!", "success");
+      // Panggil service yang sudah diupdate untuk HTML
+      await downloadHtmlGudep(targetId, namaGudep);
+      Swal.fire("Berhasil", "Laporan HTML berhasil diunduh!", "success");
     } catch (err) {
-      console.error("❌ Gagal download PDF:", err);
-      Swal.fire("Gagal", "Gagal mengunduh PDF.", "error");
+      console.error("❌ Gagal download Laporan HTML:", err);
+      Swal.fire(
+        "Gagal",
+        err.message || "Gagal mengunduh Laporan HTML.",
+        "error"
+      );
     } finally {
-      setPdfLoadingId(null);
+      setReportLoadingId(null); // Reset loading state
     }
   };
 
