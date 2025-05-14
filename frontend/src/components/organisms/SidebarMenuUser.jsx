@@ -1,5 +1,5 @@
 import { Menu, X } from "lucide-react";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const SidebarMenuUser = ({
@@ -30,6 +30,7 @@ const SidebarMenuUser = ({
         <div
           className="w-auto h-16 bg-no-repeat"
           style={{ backgroundImage: "url('/logo2.png')" }}
+          onClick={() => navigate("/")} // Navigasi ke dashboard saat logo diklik
         ></div>
 
         {/* Tombol Toggle di Dalam Sidebar */}

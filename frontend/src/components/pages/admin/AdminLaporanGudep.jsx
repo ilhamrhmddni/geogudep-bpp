@@ -1,15 +1,16 @@
-// src/components/pages/admin/AdminLaporanGudep.jsx
+import html2pdf from "html2pdf.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
+
 import { fetchGugusdepan } from "../../../services/GugusdepanService";
 import { fetchKwarran } from "../../../services/KwarranService";
 import {
   approveLaporanStatusOnly,
-  deleteLaporan as deleteLaporanService, // Diubah ke PDF
-  downloadOrViewSavedPdfReport,
+  deleteLaporan as deleteLaporanService,
   fetchLaporan,
-  generateAndDownloadPdfReport,
-  generateDirectPdfReportAndDownload,
+  prepareDataForClientPdfGeneration,
+  prepareDataForDirectClientPdf,
+  updateLaporanAfterClientPdf,
 } from "../../../services/LaporanService";
 
 import AdminHeader from "../../atoms/AdminHeader";
@@ -20,6 +21,46 @@ import LoadingSpinner from "../../atoms/LoadingSpinner";
 import NoDataMessage from "../../atoms/NoDataMessage";
 import TableR from "../../moleculs/TableR";
 import AdminTemplate from "../../templates/AdminTemplate";
+
+import {
+  renderAllDataHTMLForClient,
+  renderGudepHTMLForClient,
+  renderKwarranHTMLForClient,
+} from "../../../utils/clientSideReportRenderer"; // Pastikan path ini benar
+
+const getClientSidePdfFileName = (
+  level,
+  targetEntityInfo,
+  clientTimestamp = new Date()
+) => {
+  const now = clientTimestamp;
+  const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(
+    2,
+    "0"
+  )}${String(now.getMinutes()).padStart(2, "0")}${String(
+    now.getSeconds()
+  ).padStart(2, "0")}`;
+  let baseName = "Laporan_";
+  let entityName = "";
+  if (level === "semua") entityName = "Semua_Data";
+  else if (targetEntityInfo) {
+    if (level === "kwarran")
+      entityName = `Kwarran_${(
+        targetEntityInfo.nama || `ID_${targetEntityInfo.id}`
+      ).replace(/[^\w.-]+/g, "_")}`;
+    else if (level === "gudep")
+      entityName = `Gudep_${(
+        targetEntityInfo.pangkalan ||
+        targetEntityInfo.no_gudep ||
+        `ID_${targetEntityInfo.id}`
+      ).replace(/[^\w.-]+/g, "_")}`;
+  } else if (level) entityName = `${level}_Direct`;
+  baseName += entityName.replace(/[^\w.-]+/g, "_");
+  return `${baseName}_${timestamp}.pdf`;
+};
 
 const AdminLaporanGudep = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -37,26 +78,25 @@ const AdminLaporanGudep = () => {
   const [directReportLoading, setDirectReportLoading] = useState(false);
 
   const fetchInitialData = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const [laporanResult, kwarranResult, gudepResult] = await Promise.all([
         fetchLaporan(),
         fetchKwarran(),
         fetchGugusdepan(),
       ]);
-      setData(Array.isArray(laporanResult.data) ? laporanResult.data : []);
+      setData(Array.isArray(laporanResult?.data) ? laporanResult.data : []);
       setKwarranList(
-        Array.isArray(kwarranResult.data) ? kwarranResult.data : []
+        Array.isArray(kwarranResult?.data) ? kwarranResult.data : []
       );
       setGudepList(
-        (Array.isArray(gudepResult.data) ? gudepResult.data : []).filter(
-          (g) => g.useres?.role !== "admin"
-        )
+        Array.isArray(gudepResult?.data)
+          ? gudepResult.data.filter((g) => g.useres?.role !== "admin")
+          : []
       );
       setError(null);
     } catch (err) {
-      console.error("Error fetching data:", err);
-      setError(err.message || "Gagal mengambil data.");
+      setError(err.message || "Gagal mengambil data awal.");
     } finally {
       setLoading(false);
     }
@@ -68,56 +108,46 @@ const AdminLaporanGudep = () => {
 
   const headers = useMemo(
     () => [
-      { key: "no", label: "No", width: "w-1/20" },
-      { key: "nama", label: "Pelapor", width: "w-3/20" },
-      { key: "asal", label: "Asal", width: "w-2/20" },
-      { key: "email", label: "Email", width: "w-3/20" },
-      { key: "level", label: "Level Lap.", width: "w-2/20" },
-      { key: "targetDetail", label: "Target", width: "w-3/20" },
-      { key: "status", label: "Status", width: "w-2/20" },
-      { key: "createdAt", label: "Tgl Minta", width: "w-2/20" },
-      { key: "actions", label: "Aksi", width: "w-3/20" },
+      { key: "no", label: "No", width: "5%" },
+      { key: "nama", label: "Pelapor", width: "15%" },
+      { key: "asal", label: "Asal", width: "10%" },
+      { key: "email", label: "Email", width: "15%" },
+      { key: "level", label: "Level", width: "10%" },
+      { key: "targetDetail", label: "Target", width: "10%" },
+      { key: "status", label: "Status", width: "10%" },
+      { key: "pdfInfo", label: "PDF Klien", width: "10%" },
+      { key: "createdAt", label: "Tgl Minta", width: "10%" },
+      { key: "actions", label: "Aksi", width: "15%" },
     ],
     []
   );
 
-  const handleDeleteLaporanEntry = async (id) => {
-    const confirmResult = await Swal.fire({
-      title: "Yakin hapus?",
-      text: "Permintaan laporan ini dan file terkait di Dropbox (jika terdeteksi pathnya) akan dihapus.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Ya, hapus!",
-      cancelButtonText: "Batal",
-    });
-    if (confirmResult.isConfirmed) {
-      try {
-        await deleteLaporanService(id);
-        fetchInitialData();
-        Swal.fire("Berhasil", "Permintaan laporan telah dihapus.", "success");
-      } catch (err) {
-        Swal.fire(
-          "Gagal",
-          err.message || "Gagal menghapus permintaan laporan.",
-          "error"
-        );
+  const handleDeleteLaporanEntry = useCallback(
+    async (id) => {
+      const confirmResult = await Swal.fire({
+        title: "Yakin hapus?",
+        text: "Permintaan laporan akan dihapus.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "Ya, hapus!",
+        cancelButtonText: "Batal",
+      });
+      if (confirmResult.isConfirmed) {
+        setReportLoadingId(id);
+        try {
+          await deleteLaporanService(id);
+          setData((prev) => prev.filter((item) => item.id !== id));
+          Swal.fire("Berhasil", "Permintaan laporan dihapus.", "success");
+        } catch (err) {
+          Swal.fire("Gagal", err.message || "Gagal menghapus.", "error");
+        } finally {
+          setReportLoadingId(null);
+        }
       }
-    }
-  };
-
-  const handleSearchChange = useCallback(
-    (e) => setSearchQuery(e.target.value),
-    []
-  );
-  const handleStatusFilterChange = useCallback(
-    (value) => setSelectedStatusFilter(value),
-    []
-  );
-  const handleLevelFilterChange = useCallback(
-    (value) => setSelectedLevelFilter(value),
-    []
+    },
+    [fetchInitialData]
   );
 
   const kwarranMap = useMemo(
@@ -131,232 +161,189 @@ const AdminLaporanGudep = () => {
 
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return data.filter((item) => {
-      let targetName = "";
-      if (item.level === "kwarran")
-        targetName = kwarranMap.get(item.target_id) || "";
-      else if (item.level === "gudep")
-        targetName = gudepMap.get(item.target_id) || "";
+    return (Array.isArray(data) ? data : []).filter((item) => {
       const searchableFields = [
         item.nama,
         item.asal,
         item.email,
         item.level,
         item.status,
-        targetName,
-      ].filter(Boolean);
-      const matchesSearch = searchableFields.some((f) =>
-        f.toLowerCase().includes(query)
-      );
+      ].map((f) => String(f || "").toLowerCase());
+      const matchesSearch = searchableFields.some((f) => f.includes(query));
       const matchesStatus =
         selectedStatusFilter === "" || item.status === selectedStatusFilter;
-      const matchesLevel =
-        selectedLevelFilter === "semua" || item.level === selectedLevelFilter;
-      return matchesSearch && matchesStatus && matchesLevel;
+      return matchesSearch && matchesStatus;
     });
-  }, [
-    data,
-    searchQuery,
-    selectedStatusFilter,
-    selectedLevelFilter,
-    kwarranMap,
-    gudepMap,
-  ]);
+  }, [data, searchQuery, selectedStatusFilter, kwarranMap, gudepMap]);
 
-  const handleSetujui = async (id) => {
-    setReportLoadingId(id);
+  const generatePdfFromHtmlViaClient = async (
+    htmlString,
+    pdfGenOptions,
+    laporanId,
+    targetEntityInfo,
+    isDirect = false
+  ) => {
+    if (
+      !htmlString ||
+      typeof htmlString !== "string" ||
+      htmlString.trim() === ""
+    ) {
+      throw new Error("Konten HTML untuk PDF kosong atau tidak valid.");
+    }
+    const element = document.createElement("div");
+    element.innerHTML = htmlString;
+
+    const pdfFilename = getClientSidePdfFileName(
+      pdfGenOptions.level,
+      targetEntityInfo,
+      new Date()
+    );
+    const finalPdfOptions = {
+      margin: pdfGenOptions.orientation === "landscape" ? [10, 12, 10, 12] : 15,
+      filename: pdfFilename,
+      image: { type: "jpeg", quality: 0.95 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        letterRendering: true,
+        scrollY: 0,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+      },
+      jsPDF: {
+        unit: "mm",
+        format: "a4",
+        orientation: pdfGenOptions.orientation || "portrait",
+      },
+      pagebreak: { mode: ["css", "legacy", "avoid-all"] },
+    };
+    // Remove custom property 'level' to avoid warnings
+    delete finalPdfOptions.level;
+
+    console.log("Opsi html2pdf:", finalPdfOptions);
     try {
-      await approveLaporanStatusOnly(id, "Setujui");
-      fetchInitialData();
-      Swal.fire(
-        "Berhasil",
-        "Status diperbarui. Laporan PDF siap di-generate.",
-        "success"
-      );
-    } catch (err) {
-      Swal.fire(
-        "Gagal",
-        err.message || "Tidak bisa memperbarui status.",
-        "error"
-      );
-    } finally {
-      setReportLoadingId(null);
+      await html2pdf().set(finalPdfOptions).from(element).save();
+      if (!isDirect && laporanId) {
+        await updateLaporanAfterClientPdf(laporanId, "Selesai", pdfFilename);
+      }
+      return pdfFilename;
+    } catch (genError) {
+      console.error("Error saat generate PDF dengan html2pdf:", genError);
+      if (!isDirect && laporanId) {
+        try {
+          await updateLaporanAfterClientPdf(laporanId, "Error Generate", null);
+        } catch (e) {
+          console.error("Gagal update status Error:", e);
+        }
+      }
+      throw genError;
     }
   };
 
-  const handleSelesaiManual = async (id) => {
-    setReportLoadingId(id);
-    try {
-      await approveLaporanStatusOnly(id, "Selesai");
-      fetchInitialData();
-      Swal.fire("Berhasil", "Status laporan ditandai 'Selesai'.", "success");
-    } catch (err) {
-      Swal.fire(
-        "Gagal",
-        err.message || "Tidak bisa menyelesaikan laporan.",
-        "error"
-      );
-    } finally {
-      setReportLoadingId(null);
-    }
-  };
+  const handleSetujuiPermintaan = useCallback(
+    async (laporanId) => {
+      setReportLoadingId(laporanId);
+      try {
+        await approveLaporanStatusOnly(laporanId, "Setujui");
+        await fetchInitialData();
+        Swal.fire(
+          "Berhasil",
+          "Status 'Setujui'. Siap generate PDF (klien).",
+          "success"
+        );
+      } catch (err) {
+        Swal.fire("Gagal", err.message || "Gagal update status.", "error");
+      } finally {
+        setReportLoadingId(null);
+      }
+    },
+    [fetchInitialData]
+  );
 
-  const handleGenerateAndDownloadPdfFromList = async (laporanId) => {
-    setReportLoadingId(laporanId);
-    try {
-      const result = await generateAndDownloadPdfReport(laporanId);
-      Swal.fire(
-        "Info",
-        result.message || "Proses unduh laporan PDF dari Dropbox dimulai.",
-        "info"
-      );
-      fetchInitialData();
-    } catch (err) {
-      Swal.fire(
-        "Gagal",
-        err.message || "Gagal mengunduh laporan PDF dari Dropbox.",
-        "error"
-      );
-    } finally {
-      setReportLoadingId(null);
-    }
-  };
+  const handleGenerateClientPdfForExistingReport = useCallback(
+    async (laporanItem) => {
+      if (!laporanItem || !laporanItem.id) {
+        Swal.fire("Error", "Item laporan invalid.", "error");
+        return;
+      }
+      setReportLoadingId(laporanItem.id);
+      Swal.fire({
+        title: "Memproses...",
+        text: "Siapkan data & buat PDF...",
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading(),
+      });
+      try {
+        const prepared = await prepareDataForClientPdfGeneration(
+          laporanItem.id
+        );
+        if (!prepared || !prepared.reportRenderData)
+          throw new Error("Data render PDF tidak diterima.");
+        Swal.update({ text: "Data diterima. Membuat PDF..." });
 
-  const handleDownloadExistingPdf = async (laporanId) => {
-    setReportLoadingId(laporanId);
-    try {
-      const result = await downloadOrViewSavedPdfReport(laporanId);
-      Swal.fire(
-        "Info",
-        result.message || "Proses unduh laporan PDF dari Dropbox dimulai.",
-        "info"
-      );
-    } catch (err) {
-      Swal.fire(
-        "Gagal",
-        err.message || "Gagal mengunduh laporan PDF yang ada dari Dropbox.",
-        "error"
-      );
-    } finally {
-      setReportLoadingId(null);
-    }
-  };
+        let htmlString;
+        const pdfGenOpts = { level: prepared.laporanItem.level };
+        if (prepared.laporanItem.level === "semua") {
+          htmlString = renderAllDataHTMLForClient(prepared.reportRenderData);
+          pdfGenOpts.orientation = "landscape";
+        } else if (prepared.laporanItem.level === "kwarran") {
+          htmlString = renderKwarranHTMLForClient(prepared.reportRenderData);
+        } else if (prepared.laporanItem.level === "gudep") {
+          htmlString = renderGudepHTMLForClient(prepared.reportRenderData);
+        } else throw new Error("Level laporan tidak dikenal.");
 
-  const transformedData = useMemo(() => {
-    return filteredData.map((item, index) => {
-      let targetDetail = "-";
-      if (item.level === "kwarran")
-        targetDetail =
-          kwarranMap.get(item.target_id) || `ID: ${item.target_id}`;
-      else if (item.level === "gudep")
-        targetDetail = gudepMap.get(item.target_id) || `ID: ${item.target_id}`;
-      else if (item.level === "semua") targetDetail = "Semua Data";
-      const isLoading = reportLoadingId === item.id;
-      return {
-        no: index + 1,
-        id: item.id,
-        nama: item.nama || "-",
-        asal: item.asal || "-",
-        email: item.email || "-",
-        level: item.level || "-",
-        targetDetail,
-        status: item.status || "-",
-        createdAt: item.createdAt ? FormatDate(item.createdAt) : "-",
-        actions: (
-          <div className="flex gap-1 justify-center flex-wrap">
-            {item.status === "Menunggu" && (
-              <>
-                <button
-                  className="material-icons bg-green-500 p-1 rounded-md text-white hover:bg-green-600 text-sm"
-                  onClick={() => handleSetujui(item.id)}
-                  title="Setujui & Siapkan Laporan"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "..." : "check_circle"}
-                </button>
-                <button
-                  className="material-icons bg-red-500 p-1 rounded-md text-white hover:bg-red-600 text-sm"
-                  onClick={() => handleDeleteLaporanEntry(item.id)}
-                  title="Hapus Permintaan"
-                >
-                  delete
-                </button>
-              </>
-            )}
-            {item.status === "Setujui" && (
-              <>
-                <button
-                  className="material-icons bg-purple-600 p-1 rounded-md text-white hover:bg-purple-700 text-sm"
-                  disabled={isLoading}
-                  onClick={() => handleGenerateAndDownloadPdfFromList(item.id)}
-                  title="Generate & Unduh PDF ke Dropbox"
-                >
-                  {isLoading ? "..." : "cloud_upload"}
-                </button>
-                <button
-                  className="material-icons bg-blue-500 p-1 rounded-md text-white hover:bg-blue-600 text-sm"
-                  onClick={() => handleSelesaiManual(item.id)}
-                  title="Tandai Selesai (Manual)"
-                >
-                  done_all
-                </button>
-                <button
-                  className="material-icons bg-red-500 p-1 rounded-md text-white hover:bg-red-600 text-sm"
-                  onClick={() => handleDeleteLaporanEntry(item.id)}
-                  title="Hapus Permintaan"
-                >
-                  delete
-                </button>
-              </>
-            )}
-            {(item.status === "Selesai" || item.status === "Error Generate") &&
-              item.pdf_path && (
-                <button
-                  className="material-icons bg-teal-500 p-1 rounded-md text-white hover:bg-teal-600 text-sm"
-                  disabled={isLoading}
-                  onClick={() => handleDownloadExistingPdf(item.id)}
-                  title="Unduh Ulang PDF dari Dropbox"
-                >
-                  {isLoading ? "..." : "file_download"}
-                </button>
-              )}
-            {(item.status === "Selesai" ||
-              item.status === "Error Generate") && (
-              <button
-                className="material-icons bg-red-500 p-1 rounded-md text-white hover:bg-red-600 text-sm ml-1"
-                onClick={() => handleDeleteLaporanEntry(item.id)}
-                title="Hapus Permintaan"
-              >
-                delete
-              </button>
-            )}
-            {item.status === "Error Generate" && !item.pdf_path && (
-              <button
-                className="material-icons bg-orange-500 p-1 rounded-md text-white hover:bg-orange-600 text-sm"
-                disabled={isLoading}
-                onClick={() => handleGenerateAndDownloadPdfFromList(item.id)}
-                title="Coba Generate & Unduh Ulang PDF ke Dropbox"
-              >
-                {isLoading ? "..." : "autorenew"}
-              </button>
-            )}
-          </div>
-        ),
-      };
-    });
-  }, [
-    filteredData,
-    kwarranMap,
-    gudepMap,
-    reportLoadingId,
-    handleSetujui,
-    handleDeleteLaporanEntry,
-    handleSelesaiManual,
-    handleGenerateAndDownloadPdfFromList,
-    handleDownloadExistingPdf,
-  ]);
+        const fname = await generatePdfFromHtmlViaClient(
+          htmlString,
+          pdfGenOpts,
+          laporanItem.id,
+          prepared.targetEntityInfo,
+          false
+        );
+        Swal.fire(
+          "Sukses!",
+          `PDF "${fname}" diunduh. Status diupdate.`,
+          "success"
+        );
+        await fetchInitialData();
+      } catch (err) {
+        Swal.fire("Gagal Proses", `Gagal proses PDF: ${err.message}`, "error");
+        if (laporanItem?.id) {
+          const currentLaporan = data.find((d) => d.id === laporanItem.id);
+          if (
+            currentLaporan &&
+            currentLaporan.status !== "Selesai" &&
+            currentLaporan.status !== "Error Generate"
+          ) {
+            try {
+              await updateLaporanAfterClientPdf(
+                laporanItem.id,
+                "Error Generate",
+                null
+              );
+              await fetchInitialData();
+            } catch (e) {
+              console.error("Error update status ke Error Generate", e);
+            }
+          } else if (
+            currentLaporan &&
+            currentLaporan.status === "Error Generate"
+          ) {
+            await fetchInitialData();
+          }
+        }
+      } finally {
+        setReportLoadingId(null);
+        if (Swal.isVisible() && Swal.isLoading()) {
+          Swal.close();
+        }
+      }
+    },
+    [fetchInitialData, data]
+  );
 
-  const handleGenerateDirectPdfReport = useCallback(async () => {
+  const handleGenerateDirectClientPdf = useCallback(async () => {
     if (
       (directReportLevel === "kwarran" || directReportLevel === "gudep") &&
       !directReportTargetId
@@ -372,128 +359,239 @@ const AdminLaporanGudep = () => {
     }
     setDirectReportLoading(true);
     Swal.fire({
-      title: "Membuat Laporan PDF & Upload ke Dropbox...",
+      title: "Memproses PDF Direct...",
+      text: "Siapkan data & buat PDF...",
       allowOutsideClick: false,
+      showConfirmButton: false,
       didOpen: () => Swal.showLoading(),
     });
     try {
-      const params = { level: directReportLevel };
-      if (directReportLevel !== "semua") {
-        params.targetId = directReportTargetId;
-        if (directReportLevel === "kwarran")
-          params.namaKwarran = kwarranList.find(
-            (k) => k.id === directReportTargetId
-          )?.nama;
-        else if (directReportLevel === "gudep")
-          params.namaGudep = gudepList.find(
-            (g) => g.id === directReportTargetId
-          )?.pangkalan;
+      const paramsSvc = {
+        level: directReportLevel,
+        targetId: directReportTargetId,
+      };
+      let targetInfoName = null;
+      if (directReportLevel === "kwarran") {
+        const kw = kwarranList.find((k) => k.id === directReportTargetId);
+        paramsSvc.namaKwarran = kw?.nama;
+        targetInfoName = kw;
+      } else if (directReportLevel === "gudep") {
+        const gu = gudepList.find((g) => g.id === directReportTargetId);
+        paramsSvc.namaGudep = gu?.pangkalan || gu?.no_gudep;
+        targetInfoName = gu;
       }
-      const result = await generateDirectPdfReportAndDownload(params); // Panggil service PDF
-      Swal.close();
-      Swal.fire(
-        "Info",
-        result.message || "Proses unduh laporan PDF dari Dropbox dimulai.",
-        "info"
+
+      const prepared = await prepareDataForDirectClientPdf(paramsSvc);
+      if (!prepared || !prepared.reportRenderData)
+        throw new Error("Data render PDF direct tidak diterima.");
+      Swal.update({ text: "Data diterima. Membuat PDF..." });
+
+      let htmlString;
+      const pdfGenOpts = { level: directReportLevel };
+      if (directReportLevel === "semua") {
+        htmlString = renderAllDataHTMLForClient(prepared.reportRenderData);
+        pdfGenOpts.orientation = "landscape";
+      } else if (directReportLevel === "kwarran") {
+        htmlString = renderKwarranHTMLForClient(prepared.reportRenderData);
+      } else if (directReportLevel === "gudep") {
+        htmlString = renderGudepHTMLForClient(prepared.reportRenderData);
+      } else throw new Error("Level laporan tidak dikenal.");
+
+      const fname = await generatePdfFromHtmlViaClient(
+        htmlString,
+        pdfGenOpts,
+        null,
+        prepared.targetEntityInfo || targetInfoName,
+        true
       );
+      Swal.fire("Sukses!", `PDF Direct "${fname}" diunduh.`, "success");
     } catch (err) {
-      Swal.fire(
-        "Gagal!",
-        err.message || "Gagal membuat laporan PDF langsung.",
-        "error"
-      );
+      Swal.fire("Gagal!", err.message || "Gagal buat PDF direct.", "error");
     } finally {
       setDirectReportLoading(false);
+      if (Swal.isVisible() && Swal.isLoading()) {
+        Swal.close();
+      }
     }
   }, [directReportLevel, directReportTargetId, kwarranList, gudepList]);
 
+  const transformedData = useMemo(() => {
+    return filteredData.map((item, index) => {
+      const targetDetail =
+        item.level === "semua"
+          ? "Semua Data"
+          : item.level === "kwarran"
+          ? kwarranMap.get(item.target_id) ||
+            `ID: ${item.target_id?.substring(0, 8)}...`
+          : gudepMap.get(item.target_id) ||
+            `ID: ${item.target_id?.substring(0, 8)}...`;
+      const isLoading = reportLoadingId === item.id;
+      const pdfInfo =
+        item.pdf_path && item.pdf_path.startsWith("CLIENT_GENERATED:")
+          ? item.pdf_path.substring("CLIENT_GENERATED:".length)
+          : item.pdf_path
+          ? "Path Lama"
+          : "-";
+
+      let actionsButtons = [];
+      if (item.status === "Menunggu") {
+        actionsButtons.push(
+          <button
+            key="setujui"
+            className="material-icons bg-green-500 p-1 rounded-md text-white hover:bg-green-600"
+            onClick={() => handleSetujuiPermintaan(item.id)}
+            title="Setujui"
+            disabled={isLoading}
+          >
+            {isLoading ? "..." : "thumb_up_alt"}
+          </button>
+        );
+      }
+      if (item.status === "Setujui" || item.status === "Error Generate") {
+        actionsButtons.push(
+          <button
+            key="generateClient"
+            className={`material-icons p-1 rounded-md text-white ${
+              item.status === "Setujui"
+                ? "bg-purple-600 hover:bg-purple-700"
+                : "bg-orange-500 hover:bg-orange-600"
+            }`}
+            onClick={() => handleGenerateClientPdfForExistingReport(item)}
+            title={
+              item.status === "Setujui"
+                ? "Generate PDF (Klien)"
+                : "Coba Ulang Generate PDF (Klien)"
+            }
+            disabled={isLoading}
+          >
+            {isLoading
+              ? "..."
+              : item.status === "Error Generate"
+              ? "refresh"
+              : "picture_as_pdf"}
+          </button>
+        );
+      }
+      actionsButtons.push(
+        <button
+          key="delete"
+          className="material-icons bg-red-500 p-1 rounded-md text-white hover:bg-red-600 ml-1"
+          onClick={() => handleDeleteLaporanEntry(item.id)}
+          title="Hapus"
+          disabled={isLoading}
+        >
+          {isLoading ? "..." : "delete"}
+        </button>
+      );
+
+      return {
+        no: index + 1,
+        nama: item.nama,
+        asal: item.asal,
+        email: item.email,
+        level: item.level,
+        targetDetail,
+        status: item.status,
+        pdfInfo,
+        createdAt: item.createdAt ? FormatDate(item.createdAt) : "-",
+        actions: (
+          <div className="flex gap-1 justify-center items-center h-full">
+            {actionsButtons}
+          </div>
+        ),
+      };
+    });
+  }, [
+    filteredData,
+    kwarranMap,
+    gudepMap,
+    reportLoadingId,
+    selectedLevelFilter,
+    handleSetujuiPermintaan,
+    handleGenerateClientPdfForExistingReport,
+    handleDeleteLaporanEntry,
+  ]);
+
+  const statusOptions = useMemo(
+    () => [
+      { id: "Menunggu", nama: "Menunggu" },
+      { id: "Setujui", nama: "Setujui" },
+      { id: "Selesai", nama: "Selesai" },
+      {
+        id: "Error Generate",
+        nama: "Error Generate PDF",
+      },
+    ],
+    []
+  );
+  const levelOptions = useMemo(
+    () => [
+      { id: "", nama: "Semua Level" },
+      { id: "kwarran", nama: "Kwarran" },
+      { id: "gudep", nama: "Gudep" },
+    ],
+    []
+  );
   const directReportTargetOptions = useMemo(() => {
-    if (directReportLevel === "kwarran")
+    if (directReportLevel === "kwarran") {
+      if (!kwarranList || kwarranList.length === 0)
+        return [
+          { id: "", nama: "Memuat Kwarran...", value: "", disabled: true },
+        ];
       return kwarranList.map((k) => ({ id: k.id, nama: k.nama, value: k.id }));
-    if (directReportLevel === "gudep")
+    }
+    if (directReportLevel === "gudep") {
+      if (!gudepList || gudepList.length === 0)
+        return [{ id: "", nama: "Memuat Gudep...", value: "", disabled: true }];
       return gudepList.map((g) => ({
         id: g.id,
-        nama: `${g.pangkalan || g.no_gudep || "N/A"} (${
-          kwarranMap.get(g.kwarran_id) || "-"
+        nama: `${g.pangkalan || g.no_gudep || "Tanpa Nama"} (${
+          kwarranMap.get(g.kwarran_id) || "Tanpa Kwarran"
         })`,
         value: g.id,
       }));
+    }
     return [];
   }, [directReportLevel, kwarranList, gudepList, kwarranMap]);
 
-  const statusOptions = [
-    { id: "", value: "", label: "Filter Status" },
-    { id: "Menunggu", value: "Menunggu", label: "Menunggu" },
-    { id: "Setujui", value: "Setujui" },
-    { id: "Selesai", value: "Selesai" },
-    { id: "Error Generate", value: "Error Generate", label: "Error Generate" },
-  ];
-  const levelOptionsTableFilter = [
-    { id: "semua", value: "semua", label: "Filter Level" },
-    { id: "kwarran", value: "kwarran", label: "Kwarran" },
-    { id: "gudep", value: "gudep", label: "Gudep" },
-  ];
-  const levelOptionsDirect = [
-    { id: "semua", value: "semua", label: "Level: Semua" },
-    { id: "kwarran", value: "kwarran", label: "Level: Kwarran" },
-    { id: "gudep", value: "gudep", label: "Level: Gudep" },
-  ];
-
-  const FilterControls = (
+  const FilterAndDirectPdfControls = (
     <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center w-full md:w-auto">
       <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+        {/* Fix: options use id & nama to align with Dropdown props */}
         <Dropdown
           options={statusOptions}
           selected={selectedStatusFilter}
-          onChange={handleStatusFilterChange}
+          onChange={(val) => setSelectedStatusFilter(val)}
           placeholder="Filter Status"
           id="status-filter-table"
-          className="w-full sm:w-auto md:min-w-[150px]"
-        />
-        <Dropdown
-          options={levelOptionsTableFilter}
-          selected={selectedLevelFilter}
-          onChange={handleLevelFilterChange}
-          placeholder="Filter Level Laporan"
-          id="level-filter-table"
-          className="w-full sm:w-auto md:min-w-[150px]"
+          className="w-full sm:w-auto md:min-w-[180px]"
         />
       </div>
-      <div className="border-t md:border-t-0 md:border-l border-gray-300 my-2 md:my-0 md:mx-3 md:h-10 self-center"></div>
+      <div className="border-t md:border-t-0 md:border-l border-gray-300 my-2 md:my-0 md:mx-3 h-auto md:h-10 self-stretch"></div>
       <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-stretch">
-        <Dropdown
-          options={levelOptionsDirect}
-          selected={directReportLevel}
-          onChange={(v) => {
-            setDirectReportLevel(v);
-            setDirectReportTargetId("");
-          }}
-          placeholder="Pilih Level Unduhan"
-          id="direct-level-filter"
-          className="w-full sm:w-auto md:min-w-[150px]"
-        />
         {(directReportLevel === "kwarran" || directReportLevel === "gudep") && (
           <Dropdown
             options={directReportTargetOptions}
             selected={directReportTargetId}
-            onChange={setDirectReportTargetId}
-            placeholder={`Pilih Target`}
+            onChange={(val) => setDirectReportTargetId(val)}
+            placeholder={`Target ${directReportLevel}`}
             id="direct-target-filter"
             className="w-full sm:w-auto md:min-w-[200px]"
             disabled={
               directReportLoading ||
               loading ||
-              directReportTargetOptions.length === 0
+              directReportTargetOptions.length === 0 ||
+              directReportTargetOptions[0]?.disabled
             }
           />
         )}
         <button
-          onClick={handleGenerateDirectPdfReport}
+          onClick={handleGenerateDirectClientPdf}
           disabled={directReportLoading || loading}
-          className="bg-[#9500FF] hover:bg-[#7a00cc] text-white font-bold py-2 px-4 rounded-md disabled:opacity-50 h-10 w-full sm:w-auto text-sm"
-          title="Buat & Unduh Laporan PDF Langsung"
+          className="bg-[#9500FF] hover:bg-[#7a00cc] text-white font-bold py-2 px-4 rounded-md disabled:opacity-50 h-10 w-full sm:w-auto"
+          title="Unduh Laporan"
         >
-          {directReportLoading ? "Memproses..." : "Unduh Langsung PDF"}
+          {directReportLoading ? "Memproses..." : "Unduh Laporan"}
         </button>
       </div>
     </div>
@@ -504,11 +602,11 @@ const AdminLaporanGudep = () => {
       <div className="md:ml-18 rounded-xl shadow-xl mt-10 md:mt-0">
         <div className="p-4">
           <AdminHeader
-            title="Data Permintaan Laporan"
+            title="Laporan Gudep"
             showSearch
             searchValue={searchQuery}
-            onSearchChange={handleSearchChange}
-            additionalControls={FilterControls}
+            onSearchChange={setSearchQuery}
+            additionalControls={FilterAndDirectPdfControls}
           />
           {loading ? (
             <LoadingSpinner />
@@ -517,10 +615,8 @@ const AdminLaporanGudep = () => {
           ) : transformedData.length === 0 ? (
             <NoDataMessage
               message={
-                searchQuery ||
-                selectedStatusFilter ||
-                selectedLevelFilter !== "semua"
-                  ? "Data laporan tidak ditemukan."
+                searchQuery || selectedStatusFilter
+                  ? "Data laporan tidak ditemukan dengan filter."
                   : "Belum ada data permintaan laporan."
               }
             />
@@ -534,5 +630,4 @@ const AdminLaporanGudep = () => {
     </AdminTemplate>
   );
 };
-
 export default AdminLaporanGudep;

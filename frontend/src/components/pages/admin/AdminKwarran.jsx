@@ -1,9 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+// src/components/pages/admin/AdminKwarran.jsx
+import html2pdf from "html2pdf.js";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+
 import { deleteKwarran, fetchKwarran } from "../../../services/KwarranService";
-// Impor fungsi yang sudah disesuaikan untuk HTML
-import { downloadPdfKwarran } from "../../../services/LaporanService";
+import { prepareDataForDirectClientPdf } from "../../../services/LaporanService";
+import { renderKwarranHTMLForClient } from "../../../utils/clientSideReportRenderer";
+
 import AdminHeader from "../../atoms/AdminHeader";
 import ErrorMessage from "../../atoms/ErrorMessage";
 import LoadingSpinner from "../../atoms/LoadingSpinner";
@@ -11,26 +15,51 @@ import NoDataMessage from "../../atoms/NoDataMessage";
 import TableCRUD from "../../moleculs/TableCRUD";
 import AdminTemplate from "../../templates/AdminTemplate";
 
+const getClientSidePdfFileName = (
+  level,
+  targetEntityInfo,
+  clientTimestamp = new Date()
+) => {
+  const now = clientTimestamp;
+  const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(
+    2,
+    "0"
+  )}${String(now.getMinutes()).padStart(2, "0")}${String(
+    now.getSeconds()
+  ).padStart(2, "0")}`;
+  let baseName = "Laporan_";
+  let entityName = "";
+  if (level === "kwarran" && targetEntityInfo) {
+    entityName = `Kwarran_${(
+      targetEntityInfo.nama || `ID_${targetEntityInfo.id}`
+    ).replace(/[^\w.-]+/g, "_")}`;
+  } else {
+    entityName = `${level || "Unknown"}_${targetEntityInfo?.id || "NoID"}`;
+  }
+  baseName += entityName.replace(/[^\w.-]+/g, "_");
+  return `${baseName}_${timestamp}.pdf`;
+};
+
 const AdminKwarran = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // State untuk report generation loading
   const [reportLoadingId, setReportLoadingId] = useState(null);
 
   const navigate = useNavigate();
 
-  // Fetch data Kwarran
   const fetchData = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const result = await fetchKwarran();
-      setData(result.data || []);
+      setData(Array.isArray(result?.data) ? result.data : []);
       setError(null);
     } catch (err) {
-      console.error("Error fetching Kwarran data:", err);
-      setError("Gagal mengambil data Kwarran.");
+      setError(err.message || "Gagal mengambil data Kwarran.");
     } finally {
       setLoading(false);
     }
@@ -40,53 +69,139 @@ const AdminKwarran = () => {
     fetchData();
   }, [fetchData]);
 
-  // Table headers
   const headers = useMemo(
     () => [
       { key: "no", label: "No", width: "w-1/12" },
-      { key: "kode", label: "Kode", width: "w-1/12" }, // Adjusted width
+      { key: "kode", label: "Kode", width: "w-1/12" },
       { key: "nama", label: "Nama", width: "w-2/12" },
-      { key: "ketua_kwarran", label: "Ketua Kwarran", width: "w-2/12" }, // Adjusted width
+      { key: "ketua_kwarran", label: "Ketua Kwarran", width: "w-2/12" },
       { key: "ketua_dkr", label: "Ketua DKR", width: "w-2/12" },
-      { key: "jumlah_gudep", label: "Jml Gudep", width: "w-1/12" }, // Adjusted label
-      { key: "email", label: "Email", width: "w-2/12" },
-      { key: "actions", label: "Aksi CRUD", width: "w-1/12" }, // Adjusted width
-      { key: "download", label: "Unduh Laporan", width: "w-1/12" },
+      { key: "jumlah_gudep", label: "Jml Gudep", width: "w-1/12" },
+      { key: "email", label: "Email", width: "w-1/12" },
+      { key: "actions", label: "Aksi CRUD", width: "w-1/12" },
+      { key: "download", label: "PDF", width: "w-1/12" },
     ],
     []
   );
 
-  // Fungsi untuk mengunduh laporan HTML
-  const handleDownloadHtml = async (targetId, namaKwarran) => {
-    setReportLoadingId(targetId); // Set loading state
+  const generatePdfFromHtmlViaClient = async (
+    htmlString,
+    pdfGenOptions,
+    laporanId,
+    targetEntityInfo,
+    isDirect = false
+  ) => {
+    if (
+      !htmlString ||
+      typeof htmlString !== "string" ||
+      htmlString.trim() === ""
+    ) {
+      throw new Error("Konten HTML untuk PDF kosong atau tidak valid.");
+    }
+    const element = document.createElement("div");
+    element.innerHTML = htmlString;
+
+    const pdfFilename = getClientSidePdfFileName(
+      pdfGenOptions.level,
+      targetEntityInfo,
+      new Date()
+    );
+    const finalPdfOptions = {
+      margin: pdfGenOptions.orientation === "landscape" ? [10, 12, 10, 12] : 15,
+      filename: pdfFilename,
+      image: { type: "jpeg", quality: 0.95 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        letterRendering: true,
+        scrollY: 0,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+      },
+      jsPDF: {
+        unit: "mm",
+        format: "a4",
+        orientation: pdfGenOptions.orientation || "portrait",
+      },
+      pagebreak: { mode: ["css", "legacy", "avoid-all"] },
+    };
+    delete finalPdfOptions.level;
+
+    console.log("Opsi html2pdf (Kwarran):", finalPdfOptions);
     try {
-      // Panggil service yang sudah diupdate untuk HTML
-      await downloadPdfKwarran(targetId, namaKwarran);
-      Swal.fire("Berhasil", "Laporan HTML berhasil diunduh!", "success");
-    } catch (err) {
-      console.error("❌ Gagal download Laporan HTML:", err);
-      Swal.fire(
-        "Gagal",
-        err.message || "Gagal mengunduh Laporan HTML.",
-        "error"
+      await html2pdf().set(finalPdfOptions).from(element).save();
+      // Untuk direct download per item, biasanya tidak ada update status ke Laporan
+      return pdfFilename;
+    } catch (genError) {
+      console.error(
+        "Error saat generate PDF Kwarran dengan html2pdf:",
+        genError
       );
-    } finally {
-      setReportLoadingId(null); // Reset loading state
+      throw genError;
     }
   };
 
-  // Edit handler
+  const handleDownloadClientPdfForKwarran = useCallback(async (kwarranItem) => {
+    if (!kwarranItem || !kwarranItem.id) {
+      Swal.fire("Error", "Item Kwarran invalid.", "error");
+      return;
+    }
+    setReportLoadingId(kwarranItem.id);
+    Swal.fire({
+      title: "Memproses...",
+      text: `Siapkan data PDF untuk ${kwarranItem.nama}...`,
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading(),
+    });
+    try {
+      const prepared = await prepareDataForDirectClientPdf({
+        level: "kwarran",
+        targetId: kwarranItem.id,
+        namaKwarran: kwarranItem.nama,
+      });
+      if (!prepared || !prepared.reportRenderData)
+        throw new Error("Data render PDF Kwarran tidak diterima.");
+      Swal.update({ text: "Data diterima. Membuat PDF..." });
+
+      const htmlString = renderKwarranHTMLForClient(prepared.reportRenderData);
+      const pdfGenOpts = { level: "kwarran", orientation: "portrait" }; // Kwarran biasanya portrait
+
+      const fname = await generatePdfFromHtmlViaClient(
+        htmlString,
+        pdfGenOpts,
+        null,
+        prepared.targetEntityInfo || {
+          id: kwarranItem.id,
+          nama: kwarranItem.nama,
+        },
+        true
+      );
+      Swal.fire("Sukses!", `PDF Kwarran "${fname}" diunduh.`, "success");
+    } catch (err) {
+      Swal.fire(
+        "Gagal Proses",
+        `Gagal buat PDF Kwarran: ${err.message}`,
+        "error"
+      );
+    } finally {
+      setReportLoadingId(null);
+      if (Swal.isVisible() && Swal.isLoading()) {
+        Swal.close();
+      }
+    }
+  }, []);
+
   const handleEdit = useCallback(
     (item) => navigate(`/admin/kwarran/edit/${item.id}`),
     [navigate]
   );
-
-  // Delete handler
   const handleDelete = useCallback(
     async (id) => {
       const result = await Swal.fire({
         title: "Konfirmasi Hapus",
-        text: "Anda yakin ingin menghapus data ini?",
+        text: "Hapus data Kwarran ini?",
         icon: "warning",
         showCancelButton: true,
         confirmButtonColor: "#7a00cc",
@@ -94,7 +209,6 @@ const AdminKwarran = () => {
         confirmButtonText: "Ya, Hapus!",
         cancelButtonText: "Batal",
       });
-
       if (result.isConfirmed) {
         try {
           await deleteKwarran(id);
@@ -102,48 +216,48 @@ const AdminKwarran = () => {
           Swal.fire({
             icon: "success",
             title: "Berhasil!",
-            text: "Data Kwarran telah dihapus.",
+            text: "Data Kwarran dihapus.",
             timer: 1500,
             showConfirmButton: false,
           });
         } catch (error) {
-          console.error("Error deleting Kwarran:", error);
           Swal.fire({
             icon: "error",
             title: "Gagal!",
-            text: "Terjadi kesalahan saat menghapus data.",
+            text: "Gagal menghapus data.",
           });
         }
       }
     },
-    [setData] // Hanya setData karena fetchData tidak dipanggil langsung di sini
+    [setData]
   );
 
-  // Filter data
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return data
-      ?.filter((item) =>
+    return (Array.isArray(data) ? data : [])
+      .filter((item) =>
         Object.values(item).some((value) =>
-          String(value).toLowerCase().includes(query)
+          String(value ?? "")
+            .toLowerCase()
+            .includes(query)
         )
       )
       .map((item, index) => ({
         ...item,
         no: index + 1,
-        jumlah_gudep: item.jumlah_gudep ?? 0, // Pastikan ada nilai default jika null
-        // Render tombol download di sini, bukan di TableCRUD
+        jumlah_gudep: item.gudepesList?.length || item.jumlah_gudep || 0,
         download: (
           <button
-            onClick={() => handleDownloadHtml(item.id, item.nama)} // Panggil handleDownloadHtml
-            className="material-icons bg-[#9500FF] text-white p-1 rounded hover:bg-[#7a00cc]"
-            disabled={reportLoadingId === item.id} // Gunakan reportLoadingId
+            onClick={() => handleDownloadClientPdfForKwarran(item)}
+            className="material-icons bg-[#9500FF] text-white p-1 rounded-md hover:bg-[#7a00cc] text-sm"
+            disabled={reportLoadingId === item.id}
+            title="Unduh Laporan PDF Kwarran (Klien)"
           >
-            {reportLoadingId === item.id ? "..." : "download"}
+            {reportLoadingId === item.id ? "..." : "picture_as_pdf"}
           </button>
         ),
       }));
-  }, [data, searchQuery, reportLoadingId]); // Tambahkan reportLoadingId sebagai dependency
+  }, [data, searchQuery, reportLoadingId, handleDownloadClientPdfForKwarran]);
 
   return (
     <AdminTemplate>
@@ -170,11 +284,6 @@ const AdminKwarran = () => {
                 data={filteredData}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
-                // Tombol download sudah dirender di dalam filteredData,
-                // jadi tidak perlu prop onDownload khusus di TableCRUD
-                // kecuali TableCRUD Anda didesain untuk menerima kolom 'download'
-                // atau memiliki prop onDownload terpisah.
-                // Jika TableCRUD menangani render kolom aksi secara internal, Anda mungkin perlu menyesuaikannya.
               />
             )}
           </div>
@@ -183,5 +292,4 @@ const AdminKwarran = () => {
     </AdminTemplate>
   );
 };
-
 export default AdminKwarran;

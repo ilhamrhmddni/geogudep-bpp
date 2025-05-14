@@ -1,5 +1,5 @@
 import { Menu, X } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { logout } from "../../services/AuthService";
@@ -20,7 +20,7 @@ const SidebarMenu = ({
   const [isImageError, setIsImageError] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL;
-  // Decode token to get user information
+
   useEffect(() => {
     const decodedToken = decodeToken();
     const { username, role, user_id } = decodedToken || {};
@@ -51,6 +51,17 @@ const SidebarMenu = ({
       fetchProfilePic();
     }
   }, []);
+
+  const handleLogoClick = () => {
+    if (["admin"].includes(role)) {
+      navigate("/admin/kwarran");
+    }
+    if (["operator"].includes(role)) {
+      navigate("/operator/gugusdepan");
+    } else {
+      console.warn("Akses ditolak: Role tidak diizinkan.");
+    }
+  };
 
   // Logout function
   const handleLogout = async () => {
@@ -91,9 +102,11 @@ const SidebarMenu = ({
       >
         {/* Logo */}
         <div
-          className="w-auto h-16 bg-no-repeat"
+          className="w-auto h-16 bg-no-repeat cursor-pointer"
           style={{ backgroundImage: "url('/logo2.png')" }}
-        ></div>
+          onClick={handleLogoClick}
+          title="Kembali ke dashboard"
+        />
 
         {/* Tombol Toggle di Dalam Sidebar */}
         <button
@@ -142,9 +155,11 @@ const SidebarMenu = ({
         <div className="flex justify-between items-center">
           {/* Logo */}
           <div
-            className="w-32 h-10 bg-no-repeat bg-contain"
+            className="w-32 h-10 bg-no-repeat bg-contain cursor-pointer"
             style={{ backgroundImage: "url('/logo2.png')" }}
-          ></div>
+            onClick={handleLogoClick}
+          />
+
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-2 rounded"
