@@ -49,16 +49,8 @@ const Laporan = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    // --- AKHIR FIELD BARU ---
-    // Di src/models/Laporan.js
     status: {
-      type: DataTypes.ENUM(
-        "Menunggu",
-        "Setujui",
-        "Siap Kirim",
-        "Selesai",
-        "Error Generate"
-      ),
+      type: DataTypes.ENUM("Menunggu", "Setujui", "Selesai", "Error Generate"),
       allowNull: false,
       defaultValue: "Menunggu",
     },

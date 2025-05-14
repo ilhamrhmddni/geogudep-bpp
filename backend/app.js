@@ -14,12 +14,8 @@ const rootRoutes = require("./src/routes");
 
 // --- Global Middleware ---
 // TESTTTTTTTTTTT
-app.use(cors("https://geogudep-bpp.vercel.app"));
+app.use(cors("https://geogudep-bpp.ilhamrhmddni.com"));
 app.use(express.json());
-app.use(
-  "/reports",
-  express.static(path.join(__dirname, "generated_html_reports"))
-);
 
 // --- File Upload Configuration (Multer) ---
 const storage = multer.memoryStorage(); // Simpan file di memori
