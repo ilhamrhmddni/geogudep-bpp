@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2"; // Import SweetAlert2 untuk notifikasi
 import {
@@ -147,6 +147,7 @@ const OperatorEventForm = ({ isEdit }) => {
                   onChange={(e) => setNama(e.target.value)}
                   className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                   required
+                  placeholder="Masukkan nama event"
                 />
               </div>
 
@@ -189,6 +190,7 @@ const OperatorEventForm = ({ isEdit }) => {
                   onChange={(e) => setTempat(e.target.value)}
                   className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                   required
+                  placeholder="Masukkan tempat event"
                 />
               </div>
 
@@ -225,6 +227,7 @@ const OperatorEventForm = ({ isEdit }) => {
                   onChange={(e) => setPenyelenggara(e.target.value)}
                   className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
                   required
+                  placeholder="Masukkan Penyelenggara Event"
                 />
               </div>
 

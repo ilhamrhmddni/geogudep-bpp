@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useLocation } from "react-router-dom"; // Gunakan hook untuk mendapatkan lokasi saat ini
 import Header from "../organisms/Header";
 import SidebarMenu from "../organisms/SidebarMenu";
@@ -32,7 +32,7 @@ const OperatorTemplate = ({ children }) => {
   ];
 
   return (
-    <div className="h-screen flex">
+    <div className="h-screen flex bg-gray-100">
       {/* SidebarMenu menerima props untuk status dan fungsi toggle */}
       <SidebarMenu
         isOpen={isOpen}

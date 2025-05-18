@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { login } from "../../services/AuthService";
@@ -10,6 +10,8 @@ const LoginPage = () => {
   // State untuk menyimpan data form dan status loading
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   const navigate = useNavigate();
 
   // Efek untuk menghapus data jika token tidak ada
@@ -165,25 +167,34 @@ const LoginPage = () => {
               text="Password"
               className="text-white font-medium text-sm md:text-base"
             />
-            <TextInput
-              id="password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Masukkan Password"
-              required
-              className="w-full text-sm md:text-base"
-            />
+            <div className="relative w-full">
+              <TextInput
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Masukkan Password"
+                required
+                className="w-full text-sm md:text-base pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute inset-y-0 right-0 flex items-center text-[#9500FF] text-sm cursor-pointer material-icons mr-6"
+              >
+                {showPassword ? "visibility" : "visibility_off"}
+              </button>
+            </div>
           </div>
 
           {/* Tombol login */}
-          <div className="flex flex-col items-center mt-4">
+          <div className="flex flex-col items-center mt-8 ">
             <PrimaryButton
               text={loading ? "Loading..." : "Login"}
               type="submit"
               disabled={loading}
-              className="w-full text-sm md:text-base"
+              className="w-full text-sm md:text-base border-2"
             />
           </div>
         </form>

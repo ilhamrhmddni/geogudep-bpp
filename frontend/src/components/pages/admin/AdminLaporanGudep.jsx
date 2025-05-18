@@ -524,14 +524,6 @@ const AdminLaporanGudep = () => {
     ],
     []
   );
-  const levelOptions = useMemo(
-    () => [
-      { id: "", nama: "Semua Level" },
-      { id: "kwarran", nama: "Kwarran" },
-      { id: "gudep", nama: "Gudep" },
-    ],
-    []
-  );
   const directReportTargetOptions = useMemo(() => {
     if (directReportLevel === "kwarran") {
       if (!kwarranList || kwarranList.length === 0)

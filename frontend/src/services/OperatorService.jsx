@@ -1,3 +1,4 @@
+import axios from "axios";
 // URL dasar API
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -17,41 +18,27 @@ export const fetchUserId = async (id) => {
 };
 
 // Fungsi untuk mengedit data User (DIPERBAIKI)
-export const editUser = async (id, userData) => {
+export const updateUser = async (id, userData) => {
   try {
-    // Opsional: Log data yang akan dikirim dari service
-    // console.log("Service editUser sending data:", JSON.stringify(userData));
-
     const response = await fetch(`${API_URL}user/${id}`, {
-      method: "PUT", // Pastikan method PUT (atau PATCH) sesuai dengan backend Anda
+      method: "PUT",
       headers: {
-        "Content-Type": "application/json", // <-- HEADER DITAMBAHKAN
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(userData), // <-- BODY DI-JSON.stringify()
+      body: JSON.stringify(userData),
     });
 
-    // Penanganan response error yang sedikit lebih baik
     if (!response.ok) {
-      let errorMessage = `HTTP error! status: ${response.status}`;
-      try {
-        // Coba baca error sebagai JSON dari backend
-        const errorData = await response.json();
-        errorMessage = errorData.message || JSON.stringify(errorData); // Ambil message jika ada
-      } catch (e) {
-        // Jika error bukan JSON, baca sebagai teks biasa
-        errorMessage = await response.text();
-      }
-      console.error("Server Response Error (editUser):", errorMessage);
-      throw new Error(`Gagal memperbarui profil user: ${errorMessage}`);
+      const errorMessage = await response.text();
+      console.error("Error response:", errorMessage);
+      throw new Error(`Failed to update user: ${errorMessage}`);
     }
 
-    // Jika sukses, diasumsikan response berupa JSON
     const result = await response.json();
     return result;
   } catch (error) {
-    // Menangkap error dari fetch atau dari throw di atas
-    console.error("Error in editUser service function:", error);
-    throw error; // Lempar ulang error agar bisa ditangkap oleh komponen (handleSubmit)
+    console.error("Error updating user:", error);
+    throw error;
   }
 };
 
@@ -92,27 +79,27 @@ export const fetchUsers = async () => {
 };
 
 // Fungsi untuk membuat User baru
+// OperatorService.jsx
 export const createUser = async (userData) => {
   try {
-    const response = await fetch(`${API_URL}user`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(userData), // Ensure userData is serialized correctly
-    });
-
-    if (!response.ok) {
-      const errorMessage = await response.text();
-      console.error("Error response:", errorMessage);
-      throw new Error(`Failed to create user: ${errorMessage}`);
-    }
-
-    const result = await response.json();
-    return result;
+    const response = await axios.post(`${API_URL}user`, userData);
+    return response.data;
   } catch (error) {
-    console.error("Error creating user:", error);
-    throw error;
+    if (error.response) {
+      // Special handling for existing username
+      if (
+        error.response.status === 400 &&
+        error.response.data &&
+        error.response.data.message === "Username sudah terdaftar"
+      ) {
+        const customError = new Error("Username sudah terdaftar");
+        customError.isUsernameExists = true;
+        throw customError;
+      }
+      // Return the specific error message from the server
+      throw new Error(error.response.data.message || "Registration failed");
+    }
+    throw new Error("Network Error");
   }
 };
 

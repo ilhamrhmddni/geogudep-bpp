@@ -2,7 +2,7 @@
 // (Kode ini SAMA seperti yang Anda berikan sebelumnya)
 // Pastikan semua import path sudah benar
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import {
@@ -288,7 +288,7 @@ const OperatorPesertaDidikForm = ({ isEdit }) => {
                   onChange={handleChange}
                   required
                   className="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#9500FF]"
-                  placeholder="Masukkan Detail Tingkatan Peserta Didik"
+                  placeholder="Masukkan Detail Tingkatan Peserta Didik. Contoh: Siaga Bantu, Penggalang Ramu, Penegak Laksana, Pandega Garuda. Dll"
                 />{" "}
               </div>{" "}
               {/* Tombol Submit */}{" "}

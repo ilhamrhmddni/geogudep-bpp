@@ -124,7 +124,7 @@ const OperatorPrestasiForm = ({ isEdit }) => {
                 <label className="mb-1 font-bold text-[#9500FF]">
                   Nama Event
                 </label>
-                <div className="flex flex-row md:flex-col items-center gap-2">
+                <div className="flex flex-row items-center gap-2">
                   <select
                     value={selectedEventId}
                     onChange={(e) => setSelectedEventId(e.target.value)}

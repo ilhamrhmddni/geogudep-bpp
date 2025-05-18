@@ -1,6 +1,6 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MapContainer,
   Marker,
@@ -188,7 +188,7 @@ const OperatorGeografis = () => {
         }, 100);
       },
       (error) => {
-        Swal.fire("Gagal mengambil lokasi", error.message, "error");
+        Swal.fire("Silahkan Beri Akses Lokasi Anda", error.message, "warning");
       }
     );
   };

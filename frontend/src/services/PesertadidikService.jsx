@@ -99,14 +99,17 @@ export const deletePesertadidik = async (id) => {
 };
 
 // Fungsi untuk mengambil data peserta didik berdasarkan ID Gugus Depan
-export const fetchPesertadidikByGudep = async (gudepId) => {
+export const fetchPesertadidikByGudep = async (id) => {
   try {
-    const response = await fetch(`${API_URL}pesertadidik?gudep_id=${gudepId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json", // Header untuk JSON
-      },
-    });
+    const response = await fetch(
+      `${API_URL}pesertadidik/gudep?gudep_id=${id}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json", // Header untuk JSON
+        },
+      }
+    );
 
     if (!response.ok) {
       throw new Error(

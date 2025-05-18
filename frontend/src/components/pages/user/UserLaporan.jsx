@@ -1,12 +1,11 @@
 // src/components/pages/UserLaporan.jsx (Versi fetch API, 2 Dropdown <select>)
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { fetchGugusdepan } from "../../../services/GugusdepanService"; // Sesuaikan path
 import { fetchKwarran } from "../../../services/KwarranService"; // Sesuaikan path
 import { createLaporan } from "../../../services/LaporanService"; // Sesuaikan path
-import HeaderUser from "../../organisms/HeaderUser"; // Sesuaikan path
 import UserTemplate from "../../templates/UserTemplate"; // Sesuaikan path
 
 // Opsi untuk dropdown Level (tetap)
@@ -271,7 +270,7 @@ const UserLaporan = () => {
                   No. HP
                 </label>{" "}
                 <input
-                  type="tel"
+                  type="number"
                   id="noHp"
                   name="noHp"
                   value={formData.noHp}

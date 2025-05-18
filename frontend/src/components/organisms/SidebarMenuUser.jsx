@@ -17,6 +17,10 @@ const SidebarMenuUser = ({
     navigate("/login");
   };
 
+  const handleLogoClick = () => {
+    navigate("/");
+  };
+
   return (
     <>
       {/* Sidebar untuk desktop dan tablet */}
@@ -30,7 +34,7 @@ const SidebarMenuUser = ({
         <div
           className="w-auto h-16 bg-no-repeat"
           style={{ backgroundImage: "url('/logo2.png')" }}
-          onClick={() => navigate("/")} // Navigasi ke dashboard saat logo diklik
+          onClick={handleLogoClick}
         ></div>
 
         {/* Tombol Toggle di Dalam Sidebar */}
@@ -87,6 +91,7 @@ const SidebarMenuUser = ({
           <div
             className="w-32 h-10 bg-no-repeat bg-contain"
             style={{ backgroundImage: "url('/logo2.png')" }}
+            onClick={handleLogoClick}
           ></div>
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

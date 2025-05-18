@@ -1,41 +1,35 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchGugusdepan } from "../../../services/GugusdepanService";
-import { fetchKwarran } from "../../../services/KwarranService";
 import { fetchPesertadidik } from "../../../services/PesertadidikService";
-import AdminHeader from "../../atoms/AdminHeader"; // Import standardized header
+import AdminHeader from "../../atoms/AdminHeader";
 import DetailCell from "../../atoms/DetailCell";
-import Dropdown from "../../atoms/Dropdown"; // Import Dropdown component
+import Dropdown from "../../atoms/Dropdown";
 import ErrorMessage from "../../atoms/ErrorMessage";
 import FormatDate from "../../atoms/FormatDate";
 import LoadingSpinner from "../../atoms/LoadingSpinner";
 import NoDataMessage from "../../atoms/NoDataMessage";
-import TableR from "../../moleculs/TableR"; // Komponen tabel
+import TableR from "../../moleculs/TableR";
 import AdminTemplate from "../../templates/AdminTemplate";
 
 const AdminPesertaDidik = () => {
-  // State untuk menyimpan data dan filter
-  const [searchQuery, setSearchQuery] = useState(""); // Query pencarian
-  const [data, setData] = useState([]); // Data peserta didik
-  const [kwarranList, setKwarranList] = useState([]); // Daftar Kwarran
-  const [gudepList, setGudepList] = useState([]); // Daftar Gudep
-  const [selectedGudep, setSelectedGudep] = useState(""); // Filter Gudep
-  const [selectedTingkatan, setSelectedTingkatan] = useState(""); // Filter tingkatan
-  const [selectedGender, setSelectedGender] = useState(""); // Filter gender
-  const [loading, setLoading] = useState(true); // Status loading
-  const [error, setError] = useState(null); // Pesan error
+  const [searchQuery, setSearchQuery] = useState("");
+  const [data, setData] = useState([]);
+  const [gudepList, setGudepList] = useState([]);
+  const [selectedGudep, setSelectedGudep] = useState("");
+  const [selectedTingkatan, setSelectedTingkatan] = useState("");
+  const [selectedGender, setSelectedGender] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Fungsi untuk mengambil data peserta didik, Kwarran, dan Gudep
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [pesertaResult, kwarranResult, gudepResult] = await Promise.all([
+      const [pesertaResult, gudepResult] = await Promise.all([
         fetchPesertadidik(),
-        fetchKwarran(),
         fetchGugusdepan(),
       ]);
 
       setData(Array.isArray(pesertaResult.data) ? pesertaResult.data : []);
-      setKwarranList(kwarranResult.data || []);
       setGudepList(gudepResult.data || []);
       setError(null);
     } catch (err) {
@@ -86,7 +80,6 @@ const AdminPesertaDidik = () => {
     });
   }, [data, gudepList]);
 
-  // Filter data berdasarkan query pencarian, Gudep, Tingkatan, dan Gender
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase();
     return enrichedData.filter((item) => {
@@ -115,7 +108,6 @@ const AdminPesertaDidik = () => {
     selectedGender,
   ]);
 
-  // Transformasi data untuk ditampilkan di tabel
   const transformedData = useMemo(() => {
     return filteredData.map((item, index) => ({
       no: index + 1,
@@ -133,18 +125,16 @@ const AdminPesertaDidik = () => {
     }));
   }, [filteredData]);
 
-  // Opsi untuk dropdown filter Gudep
   const gudepOptions = useMemo(() => {
     return [...new Set(enrichedData.map((item) => item.no_gudep))]
       .filter(Boolean)
       .map((gudep) => ({
         id: gudep,
         nama: gudep,
-        key: `gudep-${gudep}`, // Tambahkan key unik
+        key: `gudep-${gudep}`,
       }));
   }, [enrichedData]);
 
-  // Opsi untuk dropdown filter Tingkatan
   const tingkatanOptions = useMemo(
     () => [
       { id: "Siaga", nama: "Siaga", key: "tingkatan-siaga" },
@@ -159,7 +149,6 @@ const AdminPesertaDidik = () => {
     []
   );
 
-  // Opsi untuk dropdown filter Gender
   const genderOptions = useMemo(
     () => [
       { value: "laki-laki", label: "Laki-laki", key: "gender-laki-laki" },
@@ -168,7 +157,6 @@ const AdminPesertaDidik = () => {
     []
   );
 
-  // Header untuk tabel
   const headers = useMemo(
     () => [
       { key: "no", label: "No", width: "w-1/12" },
@@ -184,8 +172,6 @@ const AdminPesertaDidik = () => {
 
   const FilterDropdowns = (
     <div className="hidden md:flex gap-2">
-      {" "}
-      {/* Hidden on mobile */}
       <Dropdown
         options={gudepOptions}
         selected={selectedGudep}
@@ -211,7 +197,6 @@ const AdminPesertaDidik = () => {
     <AdminTemplate>
       <div className="md:ml-18 rounded-xl shadow-xl mt-10 md:mt-0">
         <div className="p-4">
-          {/* Standardized Header */}
           <AdminHeader
             title="Data Peserta Didik"
             showSearch={true}

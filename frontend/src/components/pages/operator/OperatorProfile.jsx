@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { fetchProfile, updateProfile } from "../../../services/ProfileService"; // Gunakan ProfileService
@@ -214,7 +214,7 @@ const OperatorProfile = () => {
                   id="emailOp"
                   name="email"
                   placeholder="Masukkan Email"
-                  value={userData.email || ""}
+                  value={userData.email}
                   onChange={handleInputChange}
                   required
                 />
@@ -227,7 +227,7 @@ const OperatorProfile = () => {
                   id="fullnameOp"
                   name="fullname"
                   placeholder="Masukkan Nama Lengkap"
-                  value={userData.fullname || ""}
+                  value={userData.fullname}
                   onChange={handleInputChange}
                 />
               </div>
@@ -239,7 +239,7 @@ const OperatorProfile = () => {
                   id="asalOp"
                   name="asal"
                   placeholder="Masukkan Asal"
-                  value={userData.asal || ""}
+                  value={userData.asal}
                   onChange={handleInputChange}
                 />
               </div>
@@ -247,11 +247,11 @@ const OperatorProfile = () => {
               <div className="flex flex-col">
                 <Label text="No Telp" htmlFor="no_telpOp" />
                 <Input
-                  type="text"
+                  type="number"
                   id="no_telpOp"
                   name="no_telp"
                   placeholder="Masukkan No Telp"
-                  value={userData.no_telp || ""}
+                  value={userData.no_telp}
                   onChange={handleInputChange}
                 />
               </div>

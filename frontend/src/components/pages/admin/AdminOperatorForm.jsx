@@ -1,25 +1,20 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 // Pastikan path import service ini benar sesuai struktur proyek Anda
-import {
-  createUser,
-  editUser,
-  fetchUserId,
-} from "../../../services/OperatorService";
+import { fetchUserId } from "../../../services/OperatorService";
 // Pastikan path import template ini benar
+import { createUser, updateUser } from "../../../services/OperatorService";
 import AdminTemplate from "../../templates/AdminTemplate";
 
 const AdminOperatorForm = ({ isEdit }) => {
-  // State untuk form
   const [username, setUsername] = useState("");
   const [oldPassword, setOldPassword] = useState("");
-  const [password, setPassword] = useState(""); // Password Baru
-  const [confirmPassword, setConfirmPassword] = useState(""); // Konfirmasi Password Baru
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // State untuk kontrol UI
   const [showChangePassword, setShowChangePassword] = useState(!isEdit);
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -48,7 +43,6 @@ const AdminOperatorForm = ({ isEdit }) => {
     try {
       const response = await fetchUserId(id);
       setUsername(response.data.username);
-      // !!! PERINGATAN KEAMANAN !!!
       setOldPassword(response.data.password || "");
       setShowChangePassword(false);
     } catch (err) {
@@ -92,109 +86,96 @@ const AdminOperatorForm = ({ isEdit }) => {
   }, []);
 
   // Fungsi untuk submit form (Tambah atau Edit)
+  // Updated handleSubmit function for AdminOperatorForm.jsx
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setError(null);
 
     // Validasi username
     if (!username.trim()) {
       Swal.fire("Peringatan", "Username tidak boleh kosong.", "warning");
+      setLoading(false);
       return;
     }
 
-    // Validasi hanya jika section ganti password ditampilkan/aktif
+    // Validasi hanya jika ganti password diaktifkan
     if (showChangePassword) {
-      // Validasi Password Lama
       if (isEdit && !oldPassword.trim()) {
         Swal.fire(
           "Peringatan",
           "Password lama harus ada untuk mengganti password.",
           "warning"
         );
+        setLoading(false);
         return;
       }
-      // Validasi Password Baru
+
       if (!password) {
         Swal.fire("Peringatan", "Password baru tidak boleh kosong.", "warning");
+        setLoading(false);
         return;
       }
-      // Validasi Konfirmasi Password Baru
+
       if (password !== confirmPassword) {
         Swal.fire(
           "Peringatan",
           "Password baru dan konfirmasi password tidak cocok.",
           "warning"
         );
+        setLoading(false);
         return;
       }
     }
 
-    setLoading(true);
-
-    // Siapkan data payload
-    let userData = {
-      username: username.trim(),
-    };
-    if (isEdit && showChangePassword) {
-      userData = { ...userData, oldPassword: oldPassword, password: password };
-    } else if (!isEdit) {
-      userData = { ...userData, password: password };
-    }
-
-    // --- DEBUGGING LOG ---
-    console.log("Data yang akan dikirim ke API:", userData);
-    // --- END DEBUGGING LOG ---
-
-    // Konfirmasi Aksi
-    const confirmSubmit = await Swal.fire({
-      title: isEdit ? "Ubah Data Operator" : "Simpan Operator Baru",
-      text: isEdit
-        ? `Apakah kamu yakin ingin mengubah data ${
-            showChangePassword ? "dan password " : ""
-          }operator ini?`
-        : "Apakah kamu yakin ingin menyimpan operator baru ini?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#7a00cc",
-      cancelButtonColor: "#9500FF",
-      confirmButtonText: "Ya, lanjutkan!",
-      cancelButtonText: "Batal",
-    });
-
-    if (!confirmSubmit.isConfirmed) {
-      setLoading(false);
-      return;
-    }
-
-    // Proses pengiriman data
+    // Di sini lanjutkan dengan proses submit ke backend atau logic lainnya
     try {
-      if (isEdit && id) {
-        await editUser(id, userData); // Kirim userData
-        Swal.fire("Sukses!", "Data operator berhasil diubah.", "success").then(
-          () => navigate("/admin/operator")
-        );
+      // Panggil API sesuai kebutuhan (create/update user)
+      if (isEdit) {
+        await updateUser(id, {
+          username,
+          ...(showChangePassword && password ? { password } : {}),
+        });
+        Swal.fire("Berhasil", "Data operator berhasil diperbarui", "success");
       } else {
-        await createUser(userData); // Kirim userData
-        Swal.fire("Sukses!", "Operator baru telah disimpan.", "success").then(
-          () => navigate("/admin/operator")
-        );
+        await createUser({ username, password });
+        Swal.fire("Berhasil", "Operator baru berhasil ditambahkan", "success");
       }
+
+      navigate("/admin/operator");
     } catch (err) {
       console.error("Error submitting form:", err);
-      const errorMessage =
-        err.response?.data?.message || "Terjadi kesalahan saat menyimpan data.";
+
+      let errorMessage = "Terjadi kesalahan saat menyimpan data.";
+
+      // Check for direct error message first (this handles our custom error from createUser)
+      if (err.message === "Username sudah terdaftar") {
+        errorMessage = "Username sudah digunakan. Silakan pilih username lain.";
+      }
+      // Then check response data as fallback
+      else if (err.response && err.response.data) {
+        const serverMessage =
+          typeof err.response.data === "string"
+            ? err.response.data
+            : err.response.data.message;
+
+        if (serverMessage === "Username sudah terdaftar") {
+          errorMessage =
+            "Username sudah digunakan. Silakan pilih username lain.";
+        } else if (serverMessage) {
+          errorMessage = serverMessage;
+        }
+      }
+
       setError(errorMessage);
-      Swal.fire("Error!", errorMessage, "error");
-    } finally {
       setLoading(false);
+      Swal.fire("Gagal", errorMessage, "error");
     }
   };
 
-  // Render komponen
   return (
     <AdminTemplate>
       <div className="flex flex-col mt-20 md:mt-0">
-        {/* Header */}
         <div className="flex items-center p-4 m-auto w-full md:ml-20">
           <div
             className="flex items-center gap-4 font-bold text-lg md:text-xl px-4 py-2 bg-[#9500FF] rounded-md text-white cursor-pointer hover:bg-[#7a00cc] transition-colors"
@@ -208,7 +189,6 @@ const AdminOperatorForm = ({ isEdit }) => {
           </h1>
         </div>
 
-        {/* Form Kontainer */}
         <div className="flex flex-auto items-center justify-center">
           <div className="p-4 md:p-8 bg-white rounded-lg shadow-xl text-left w-full mx-4 md:ml-24 mb-8">
             {error && (
@@ -221,9 +201,7 @@ const AdminOperatorForm = ({ isEdit }) => {
               </div>
             )}
 
-            {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Username */}
               <div className="flex flex-col">
                 <label
                   htmlFor="username"
@@ -242,9 +220,7 @@ const AdminOperatorForm = ({ isEdit }) => {
                   autoComplete="username"
                 />
               </div>
-              {/* Password Lama (Edit Mode) */}
               {isEdit && (
-                // Kontainer utama (tetap flex-col untuk label di atas)
                 <div className="flex flex-col">
                   <label
                     htmlFor="oldPassword"
@@ -252,14 +228,8 @@ const AdminOperatorForm = ({ isEdit }) => {
                   >
                     Password Lama
                   </label>
-                  {/* Kontainer baru untuk mengatur input dan tombol 'Ganti Password' (SELALU BARIS) */}
-                  {/* Kelas diubah: tidak ada lagi flex-col, md:flex-row, md:items-center, md:space-x-4 */}
                   <div className="flex items-center space-x-4 mt-1">
-                    {" "}
-                    {/* Selalu flex row, items-center, dan space-x-4 */}
-                    {/* Grup Input + Tombol Lihat (dibuat flex-grow agar mengisi ruang) */}
                     <div className="relative flex-grow">
-                      {/* Input Field Password Lama */}
                       <input
                         id="oldPassword"
                         type={showOldPassword ? "text" : "password"}
@@ -274,7 +244,6 @@ const AdminOperatorForm = ({ isEdit }) => {
                         readOnly={!showChangePassword}
                         disabled={showChangePassword}
                       />
-                      {/* Tombol Toggle Lihat/Sembunyikan */}
                       <button
                         type="button"
                         onClick={handleToggleOldPassword}
@@ -291,14 +260,10 @@ const AdminOperatorForm = ({ isEdit }) => {
                         </span>
                       </button>
                     </div>{" "}
-                    {/* Akhir dari div relative (input group) */}
-                    {/* Tombol Toggle Ganti Password (selalu di samping kanan input group) */}
                     <button
                       type="button"
                       onClick={handleToggleChangePassword}
-                      // Kelas whitespace-nowrap DIHAPUS dari sini
                       className={`text-sm font-semibold py-1 md:py-3 px-3 rounded w-max ${
-                        // Tetap gunakan w-max agar lebar tidak terlalu besar
                         showChangePassword
                           ? "bg-red-100 text-red-700 hover:bg-red-200"
                           : "bg-purple-100 text-purple-700 hover:bg-purple-200"
@@ -308,15 +273,11 @@ const AdminOperatorForm = ({ isEdit }) => {
                         ? "Batal Ganti Password"
                         : "Ganti Password"}
                     </button>
-                  </div>{" "}
-                  {/* Akhir dari div flex (selalu baris) */}
-                </div> // Akhir dari div flex flex-col utama
-              )}{" "}
-              {/* Akhir dari {isEdit && (...)} */}
-              {/* Password Baru & Konfirmasi */}
+                  </div>
+                </div>
+              )}
               {showChangePassword && (
                 <div className="flex flex-col space-y-4">
-                  {/* Password Baru */}
                   <div className="flex flex-col">
                     <label
                       htmlFor="newPassword"
@@ -346,7 +307,6 @@ const AdminOperatorForm = ({ isEdit }) => {
                       </button>
                     </div>
                   </div>
-                  {/* Konfirmasi Password Baru */}
                   <div className="flex flex-col">
                     <label
                       htmlFor="confirmPassword"
@@ -378,7 +338,6 @@ const AdminOperatorForm = ({ isEdit }) => {
                   </div>
                 </div>
               )}
-              {/* Tombol Submit */}
               <button
                 type="submit"
                 className={`w-full bg-[#9500FF] text-white font-bold p-3 mt-6 rounded-md hover:bg-[#7a00cc] transition duration-200 ${
@@ -399,5 +358,4 @@ const AdminOperatorForm = ({ isEdit }) => {
     </AdminTemplate>
   );
 };
-
 export default AdminOperatorForm;

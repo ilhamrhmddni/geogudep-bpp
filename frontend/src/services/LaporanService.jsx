@@ -36,8 +36,6 @@ async function handleFetchError(response) {
   throw new Error(errorMessage);
 }
 
-// --- FUNGSI YANG TETAP RELEVAN / SEDIKIT MODIFIKASI ---
-
 export const fetchLaporan = async () => {
   try {
     // ASUMSI: Sistem Anda akan menambahkan header Auth jika diperlukan untuk endpoint ini.
@@ -108,8 +106,6 @@ export const approveLaporanStatusOnly = async (id, newStatus) => {
     throw error;
   }
 };
-
-// --- FUNGSI BARU/DIMODIFIKASI UNTUK ALUR PEMBUATAN PDF DI KLIEN ---
 
 export const prepareDataForClientPdfGeneration = async (laporanId) => {
   try {
@@ -206,8 +202,6 @@ export const updateLaporanAfterClientPdf = async (
   }
 };
 
-// --- FUNGSI HELPER UNTUK DIRECT DOWNLOAD (MODIFIKASI UNTUK ALUR KLIEN) ---
-// Fungsi ini hanya mengambil data, pembuatan PDF terjadi di komponen.
 export const getKwarranReportDataForClient = async (targetId, namaKwarran) => {
   console.log(
     `LaporanService: Mempersiapkan data untuk Kwarran ID ${targetId}, Nama: ${namaKwarran}`
@@ -229,7 +223,3 @@ export const getGudepReportDataForClient = async (targetId, namaGudep) => {
     namaGudep,
   });
 };
-
-// Fungsi-fungsi lama yang memicu generate PDF di backend (generateAndDownloadPdfReport, dll.)
-// dan fungsi downloadOrViewSavedPdfReport sudah dihapus/dikomentari di versi sebelumnya,
-// karena PDF sekarang di-generate dan di-download di sisi klien.

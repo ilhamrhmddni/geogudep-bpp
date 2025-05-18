@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import html2pdf from "html2pdf.js";
+import { useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import {
   editGugusdepan,
@@ -7,6 +8,9 @@ import {
 import { fetchKwarran } from "../../../services/KwarranService";
 import { decodeToken } from "../../../utils/jwt";
 import OperatorTemplate from "../../templates/OperatorTemplate";
+
+import { prepareDataForDirectClientPdf } from "../../../services/LaporanService";
+import { renderGudepHTMLForClient } from "../../../utils/clientSideReportRenderer"; // Adjust the path as necessary
 
 const OperatorGugusdepan = () => {
   // State untuk menyimpan data Gugusdepan
@@ -17,15 +21,98 @@ const OperatorGugusdepan = () => {
   const [jumlahPutra, setJumlahPutra] = useState(0); // Jumlah putra
   const [jumlahPutri, setJumlahPutri] = useState(0); // Jumlah putri
   const [noGudep, setNoGudep] = useState(""); // Nomor Gudep
+  const [tingkatan, setTingkatan] = useState(""); // Tingkatan
+  const [labelAmbalan, setLabelAmbalan] = useState(null); // Label ambalan
   const [pangkalan, setPangkalan] = useState(""); // Nama pangkalan
   const [ambalan, setAmbalan] = useState(""); // Nama ambalan
   const [isEditable, setIsEditable] = useState(false); // Status edit
+  const [reportLoadingId, setReportLoadingId] = useState(null); // State to track loading for PDF generation
 
   // Decode token untuk mendapatkan gudep_id
   const tokenData = decodeToken();
   const gudepId = tokenData?.gudep_id;
 
   if (!gudepId) throw new Error("Gudep ID tidak ditemukan di token.");
+
+  const getClientSidePdfFileName = (
+    level,
+    targetEntityInfo,
+    clientTimestamp = new Date()
+  ) => {
+    const now = clientTimestamp;
+    const timestamp = `${now.getFullYear()}${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(
+      now.getHours()
+    ).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(
+      now.getSeconds()
+    ).padStart(2, "0")}`;
+    let baseName = "Laporan_";
+    let entityName = "";
+    if (level === "gudep" && targetEntityInfo) {
+      entityName = `Gudep_${(
+        targetEntityInfo.pangkalan ||
+        targetEntityInfo.no_gudep ||
+        `ID_${targetEntityInfo.id}`
+      ).replace(/[^\w.-]+/g, "_")}`;
+    } else {
+      entityName = `${level || "Unknown"}_${targetEntityInfo?.id || "NoID"}`;
+    }
+    baseName += entityName.replace(/[^\w.-]+/g, "_");
+    return `${baseName}_${timestamp}.pdf`;
+  };
+
+  const generatePdfFromHtmlViaClient = async (
+    htmlString,
+    pdfGenOptions,
+    targetEntityInfo
+  ) => {
+    if (
+      !htmlString ||
+      typeof htmlString !== "string" ||
+      htmlString.trim() === ""
+    ) {
+      throw new Error("Konten HTML untuk PDF kosong atau tidak valid.");
+    }
+    const element = document.createElement("div");
+    element.innerHTML = htmlString;
+
+    const pdfFilename = getClientSidePdfFileName(
+      pdfGenOptions.level,
+      targetEntityInfo,
+      new Date()
+    );
+    const finalPdfOptions = {
+      margin: pdfGenOptions.orientation === "landscape" ? [10, 12, 10, 12] : 15,
+      filename: pdfFilename,
+      image: { type: "jpeg", quality: 0.95 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        letterRendering: true,
+        scrollY: 0,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+      },
+      jsPDF: {
+        unit: "mm",
+        format: "a4",
+        orientation: pdfGenOptions.orientation || "portrait",
+      },
+      pagebreak: { mode: ["css", "legacy", "avoid-all"] },
+    };
+    delete finalPdfOptions.level;
+
+    console.log("Opsi html2pdf (Gudep):", finalPdfOptions);
+    try {
+      await html2pdf().set(finalPdfOptions).from(element).save();
+      return pdfFilename;
+    } catch (genError) {
+      console.error("Error saat generate PDF Gudep dengan html2pdf:", genError);
+      throw genError;
+    }
+  };
 
   // Ambil data Gugusdepan berdasarkan ID
   useEffect(() => {
@@ -39,6 +126,7 @@ const OperatorGugusdepan = () => {
         setNoGudep(result.data.no_gudep || "");
         setPangkalan(result.data.pangkalan || "");
         setAmbalan(result.data.ambalan || "");
+        setTingkatan(result.data.tingkatan || "");
         setError(null);
       } catch (error) {
         setError("Gagal mengambil data Gugusdepan.");
@@ -65,6 +153,66 @@ const OperatorGugusdepan = () => {
     fetchKwarranData();
   }, []);
 
+  useEffect(() => {
+    const lower = tingkatan.toLowerCase();
+    if (lower === "siaga" || lower === "penggalang") {
+      setLabelAmbalan("Jumlah Barung / Regu :");
+    } else {
+      setLabelAmbalan("Ambalan / Racana :");
+    }
+  }, [tingkatan]);
+
+  const handleDownloadClientPdfForGudep = useCallback(async () => {
+    if (!data || !data.id) {
+      Swal.fire("Error", "Item Gudep invalid.", "error");
+      return;
+    }
+    setReportLoadingId(data.id);
+    Swal.fire({
+      title: "Memproses...",
+      text: `Siapkan data PDF untuk ${data.pangkalan || data.no_gudep}...`,
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading(),
+    });
+    try {
+      const prepared = await prepareDataForDirectClientPdf({
+        level: "gudep",
+        targetId: data.id,
+        namaGudep: data.pangkalan || data.no_gudep,
+      });
+      if (!prepared || !prepared.reportRenderData)
+        throw new Error("Data render PDF Gudep tidak diterima.");
+      Swal.update({ text: "Data diterima. Membuat PDF..." });
+
+      const htmlString = renderGudepHTMLForClient(prepared.reportRenderData);
+      const pdfGenOpts = { level: "gudep", orientation: "portrait" };
+
+      const fname = await generatePdfFromHtmlViaClient(
+        htmlString,
+        pdfGenOpts,
+        prepared.targetEntityInfo || {
+          id: data.id,
+          pangkalan: data.pangkalan,
+          no_gudep: data.no_gudep,
+        },
+        true
+      );
+      Swal.fire("Sukses!", `PDF Gudep "${fname}" diunduh.`, "success");
+    } catch (err) {
+      Swal.fire(
+        "Gagal Proses",
+        `Gagal buat PDF Gudep: ${err.message}`,
+        "error"
+      );
+    } finally {
+      setReportLoadingId(null);
+      if (Swal.isVisible() && Swal.isLoading()) {
+        Swal.close();
+      }
+    }
+  }, [data]);
+
   // Fungsi untuk mengaktifkan mode edit
   const handleEditClick = () => setIsEditable(true);
 
@@ -89,6 +237,7 @@ const OperatorGugusdepan = () => {
             no_gudep: noGudep,
             pangkalan: pangkalan,
             ambalan: ambalan,
+            tingkatan: tingkatan,
           });
 
           Swal.fire("Sukses!", "Data Anda telah disimpan.", "success");
@@ -101,6 +250,7 @@ const OperatorGugusdepan = () => {
           setNoGudep(updatedResult.data.no_gudep || "");
           setPangkalan(updatedResult.data.pangkalan || "");
           setAmbalan(updatedResult.data.ambalan || "");
+          setTingkatan(updatedResult.data.tingkatan || "");
           setIsEditable(false);
         } catch (error) {
           Swal.fire("Error!", "Gagal menyimpan data.", "error");
@@ -129,17 +279,26 @@ const OperatorGugusdepan = () => {
                   className="bg-[#9500FF] text-white px-4 py-2 rounded-2xl border-2 border-white cursor-pointer font-bold flex gap-2"
                 >
                   <span className="material-icons">save</span>
-                  <div className="hidden md:visible">Simpan</div>
+                  <div className="hidden md:block">Simpan</div>
                 </button>
               ) : (
                 <button
                   onClick={handleEditClick}
                   className="bg-white text-[#9500FF] md:px-4 px-3 py-2 rounded-2xl border-2 border-[#9500FF] cursor-pointer font-bold flex gap-2"
+                  title="Ubah Data"
                 >
                   <span className="material-icons">edit</span>
-                  <div className="hidden md:visible">Ubah</div>
+                  <div className="hidden md:block">Ubah</div>
                 </button>
               )}
+              <button
+                onClick={handleDownloadClientPdfForGudep}
+                className="bg-[#9500FF] text-white p-1 rounded-md hover:bg-[#7a00cc] text-sm cursor-pointer px-4 hidden md:block font-bold"
+                disabled={reportLoadingId === data?.id} // Use optional chaining
+                title="Unduh Laporan PDF Gudep (Klien)"
+              >
+                {reportLoadingId === data?.id ? "..." : "Unduh Laporan Gudep"}
+              </button>
             </div>
           </div>
 
@@ -178,16 +337,13 @@ const OperatorGugusdepan = () => {
                     Tingkatan
                   </label>
                   <select
-                    value={data.tingkatan || ""}
-                    onChange={(e) =>
-                      setData({ ...data, tingkatan: e.target.value })
-                    }
+                    value={tingkatan || ""}
+                    onChange={(e) => setTingkatan(e.target.value)}
                     className={`rounded-xl p-3 w-full border border-gray-300 ${
                       !isEditable ? "bg-gray-100" : ""
                     }`}
                     disabled={!isEditable}
                   >
-                    <option value="">Pilih Tingkatan</option>
                     <option value="Siaga">Siaga</option>
                     <option value="Penggalang">Penggalang</option>
                     <option value="Penegak/Pandega">Penegak/Pandega</option>
@@ -239,7 +395,7 @@ const OperatorGugusdepan = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
-                    Ambalan
+                    {labelAmbalan}
                   </label>
                   <input
                     type="text"
@@ -249,9 +405,14 @@ const OperatorGugusdepan = () => {
                       !isEditable ? "bg-gray-100" : ""
                     }`}
                     readOnly={!isEditable}
-                    placeholder="Masukkan Ambalan"
+                    placeholder={
+                      labelAmbalan === "Ambalan / Racana :"
+                        ? "Masukkan Ambalan / Racana"
+                        : "Masukkan Jumlah Barung / Regu"
+                    }
                   />
                 </div>
+
                 <div>
                   <label className="text-[#9500FF] font-bold mb-2 block">
                     Pangkalan

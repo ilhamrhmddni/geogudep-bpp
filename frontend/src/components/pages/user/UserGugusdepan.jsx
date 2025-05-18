@@ -3,7 +3,7 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import "leaflet/dist/leaflet.css";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   GeoJSON,
   MapContainer,
@@ -35,7 +35,7 @@ L.Icon.Default.mergeOptions({
 });
 
 // Predefined constants
-const DEFAULT_POSITION = [-1.2550458, 116.8878243]; // Center of Balikpapan
+const DEFAULT_POSITION = [-1.2550458, 116.8878243];
 const INITIAL_ZOOM = 12;
 const KWARRAN_COLORS = [
   "#de8685",
@@ -45,8 +45,6 @@ const KWARRAN_COLORS = [
   "#ceee8d",
   "#4dabf7",
 ];
-
-// GeoJSON data mapping
 const GEO_JSON_DATA = {
   Barat: BalikpapanBarat,
   Kota: BalikpapanKota,
@@ -55,28 +53,23 @@ const GEO_JSON_DATA = {
   Tengah: BalikpapanTengah,
   Utara: BalikpapanUtara,
 };
-
-// Define tingkatan options once
 const TINGKATAN_OPTIONS = [
   { nama: "Siaga" },
   { nama: "Penggalang" },
   { nama: "Penegak/Pandega" },
+  { nama: "Pandega" },
 ];
 
-// Map toggle fullscreen component
 const ToggleMapSize = ({ isFullScreen, setIsFullScreen }) => {
   const map = useMap();
-
   const toggleFullScreen = useCallback(() => {
     const mapContainer = map.getContainer();
     mapContainer.classList.toggle("full-screen-map");
     setIsFullScreen((prev) => !prev);
     map.invalidateSize();
-
     document.body.classList.toggle("fullscreen-active", !isFullScreen);
   }, [map, isFullScreen, setIsFullScreen]);
 
-  // Cleanup effect
   useEffect(() => {
     return () => {
       document.body.classList.remove("fullscreen-active");
@@ -98,7 +91,6 @@ const ToggleMapSize = ({ isFullScreen, setIsFullScreen }) => {
   );
 };
 
-// Map filters component
 const MapFilters = ({
   kwarranOptions,
   selectedKwarran,
@@ -138,7 +130,6 @@ const MapFilters = ({
   );
 };
 
-// Legend component
 const MapLegend = () => (
   <div
     className="absolute md:visible invisible bottom-5 left-5 z-1000 bg-white p-2 rounded-lg shadow-lg"
@@ -162,10 +153,8 @@ const MapLegend = () => (
   </div>
 );
 
-// Kwarran legend component
 const KwarranLegend = ({ kwarranColors }) => {
   if (Object.keys(kwarranColors).length === 0) return null;
-
   return (
     <div className="absolute md:visible invisible bottom-35 left-5 z-1000 bg-white px-3 py-2 rounded-lg shadow-lg max-h-48 overflow-y-auto">
       <h4 className="font-bold text-sm mb-2">Legenda Kwarran</h4>
@@ -184,7 +173,6 @@ const KwarranLegend = ({ kwarranColors }) => {
   );
 };
 
-// Detail Gudep panel component
 const DetailGudepPanel = ({ selectedGugusdepan, kwarranData }) => {
   if (!selectedGugusdepan) return null;
 
@@ -192,10 +180,14 @@ const DetailGudepPanel = ({ selectedGugusdepan, kwarranData }) => {
     kwarranData.find((k) => k.id === selectedGugusdepan.kwarran_id)?.nama ||
     "Belum Tersedia";
 
+  // Menentukan nama yang akan ditampilkan untuk Gugus Depan di judul panel
+  const gudepDisplayName =
+    selectedGugusdepan.pangkalan || selectedGugusdepan.no_gudep || "Terpilih"; // Teks pengganti jika pangkalan dan no_gudep tidak ada
+
   return (
-    <div className="my-4 p-4 bg-white rounded-xl shadow-lg border border-gray-200">
+    <div className="my-4 p-6 bg-white rounded-xl shadow-lg border border-gray-200">
       <h3 className="text-xl font-bold text-[#9500FF] mb-4">
-        Detail Gugus Depan
+        Detail Data Gugus Depan {gudepDisplayName}
       </h3>
       <div className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -206,30 +198,6 @@ const DetailGudepPanel = ({ selectedGugusdepan, kwarranData }) => {
             <input
               type="text"
               value={kwarranName}
-              readOnly
-              className="input-display-style"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-600 mb-1 block">
-              Tingkatan:
-            </label>
-            <input
-              type="text"
-              value={selectedGugusdepan.tingkatan || "Belum Tersedia"}
-              readOnly
-              className="input-display-style"
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium text-gray-600 mb-1 block">
-              No. Gudep:
-            </label>
-            <input
-              type="text"
-              value={selectedGugusdepan.no_gudep || "Belum Tersedia"}
               readOnly
               className="input-display-style"
             />
@@ -249,31 +217,74 @@ const DetailGudepPanel = ({ selectedGugusdepan, kwarranData }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium text-gray-600 mb-1 block">
-              Jumlah Putra:
+              No. Gudep:
             </label>
             <input
               type="text"
-              value={
-                selectedGugusdepan.jumlah_putra?.toString() ?? "Belum Tersedia"
-              }
+              value={selectedGugusdepan.no_gudep || "Belum Tersedia"}
               readOnly
               className="input-display-style"
             />
           </div>
           <div>
             <label className="text-sm font-medium text-gray-600 mb-1 block">
-              Jumlah Putri:
+              {selectedGugusdepan.tingkatan === "Penegak/Pandega" ||
+              selectedGugusdepan.tingkatan === "Pandega"
+                ? "Ambalan/Racana:"
+                : "Jumlah Barung/Regu:"}
             </label>
             <input
               type="text"
-              value={
-                selectedGugusdepan.jumlah_putri?.toString() ?? "Belum Tersedia"
-              }
+              value={selectedGugusdepan.ambalan || "Belum Tersedia"}
               readOnly
               className="input-display-style"
             />
           </div>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="col-span-1 md:col-span-2">
+            <label className="text-sm font-medium text-gray-600 mb-1 block">
+              Tingkatan:
+            </label>
+            <input
+              type="text"
+              value={selectedGugusdepan.tingkatan || "Belum Tersedia"}
+              readOnly
+              className="input-display-style w-full"
+            />
+          </div>
+          <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-600 mb-1 block">
+                Jumlah Putra:
+              </label>
+              <input
+                type="text"
+                value={
+                  selectedGugusdepan.jumlah_putra?.toString() ??
+                  "Belum Tersedia"
+                }
+                readOnly
+                className="input-display-style w-full"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-600 mb-1 block">
+                Jumlah Putri:
+              </label>
+              <input
+                type="text"
+                value={
+                  selectedGugusdepan.jumlah_putri?.toString() ??
+                  "Belum Tersedia"
+                }
+                readOnly
+                className="input-display-style w-full"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         <div>
           <label className="text-sm font-medium text-gray-600 mb-1 block">
             Mabigus:
@@ -299,11 +310,11 @@ const DetailGudepPanel = ({ selectedGugusdepan, kwarranData }) => {
           </div>
           <div>
             <label className="text-sm font-medium text-gray-600 mb-1 block">
-              Pelatih:
+              Email:
             </label>
             <input
               type="text"
-              value={selectedGugusdepan.pelatih || "Belum Tersedia"}
+              value={selectedGugusdepan.email || "Belum Tersedia"}
               readOnly
               className="input-display-style"
             />
@@ -312,11 +323,11 @@ const DetailGudepPanel = ({ selectedGugusdepan, kwarranData }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium text-gray-600 mb-1 block">
-              Email:
+              Pelatih:
             </label>
             <input
               type="text"
-              value={selectedGugusdepan.email || "Belum Tersedia"}
+              value={selectedGugusdepan.pelatih || "Belum Tersedia"}
               readOnly
               className="input-display-style"
             />
@@ -348,15 +359,11 @@ const DetailGudepPanel = ({ selectedGugusdepan, kwarranData }) => {
   );
 };
 
-// Main component
 const UserGugusdepan = () => {
-  // Data states
   const [geografisData, setGeografisData] = useState([]);
   const [gugusdepanData, setGugusdepanData] = useState([]);
   const [kwarranData, setKwarranData] = useState([]);
   const [kwarranColors, setKwarranColors] = useState({});
-
-  // UI states
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -364,7 +371,11 @@ const UserGugusdepan = () => {
   const [selectedKwarran, setSelectedKwarran] = useState("");
   const [selectedTingkatan, setSelectedTingkatan] = useState("");
 
-  // Fetch all data on component mount
+  // HAPUS state latMap, longMap dan useEffect terkait karena tidak digunakan dengan benar untuk link popup
+  // const [latMap, setLatMap] = useState(null);
+  // const [longMap, setLongMap] = useState(null);
+  // useEffect(() => { /* ... logika dengan variabel 'koordinat' yang tidak jelas ... */ }, [koordinat]);
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -375,17 +386,10 @@ const UserGugusdepan = () => {
           fetchGugusdepan(),
           fetchKwarran(),
         ]);
-
-        // Validate and set state
-        const fetchedGeografis = geoResult?.data || [];
-        const fetchedGudep = gudepResult?.data || [];
+        setGeografisData(geoResult?.data || []);
+        setGugusdepanData(gudepResult?.data || []);
         const fetchedKwarran = kwarranResult?.data || [];
-
-        setGeografisData(fetchedGeografis);
-        setGugusdepanData(fetchedGudep);
         setKwarranData(fetchedKwarran);
-
-        // Generate colors for kwarrans
         if (Array.isArray(fetchedKwarran)) {
           const colors = {};
           fetchedKwarran.forEach((kwarran, index) => {
@@ -399,7 +403,6 @@ const UserGugusdepan = () => {
       } catch (err) {
         setError("Error fetching data. Please check console.");
         console.error("Error fetching data:", err);
-        // Set empty states on error
         setGeografisData([]);
         setGugusdepanData([]);
         setKwarranData([]);
@@ -411,18 +414,15 @@ const UserGugusdepan = () => {
     fetchData();
   }, []);
 
-  // Reset filters function
   const resetFilters = useCallback(() => {
     setSelectedKwarran("");
     setSelectedTingkatan("");
     setSelectedGugusdepan(null);
   }, []);
 
-  // Create custom icon marker function
   const createCustomIcon = useCallback((tingkatan) => {
     const lowerTingkatan = tingkatan?.toLowerCase() || "";
-    let color = "blue"; // Default
-
+    let color = "blue";
     if (lowerTingkatan === "siaga") color = "green";
     else if (lowerTingkatan === "penggalang") color = "red";
     else if (
@@ -430,7 +430,6 @@ const UserGugusdepan = () => {
       lowerTingkatan === "penegak"
     )
       color = "yellow";
-
     return L.icon({
       iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
       shadowUrl:
@@ -442,18 +441,12 @@ const UserGugusdepan = () => {
     });
   }, []);
 
-  // Filter gugusdepan based on selected filters
   const filteredGugusdepan = useMemo(() => {
     return gugusdepanData.filter((gudep) => {
-      // Find kwarran for this gudep
       const gudepKwarran = kwarranData.find((k) => k.id === gudep.kwarran_id);
       const gudepKwarranName = gudepKwarran?.nama || "";
-
-      // Filter by Kwarran
       const kwarranMatch =
         !selectedKwarran || gudepKwarranName === selectedKwarran;
-
-      // Filter by Tingkatan
       const tingkatanMatch =
         !selectedTingkatan ||
         (gudep.tingkatan &&
@@ -462,26 +455,21 @@ const UserGugusdepan = () => {
               ["penegak", "pandega", "penegak/pandega"].includes(
                 gudep.tingkatan.toLowerCase()
               ))));
-
       return kwarranMatch && tingkatanMatch;
     });
   }, [gugusdepanData, kwarranData, selectedKwarran, selectedTingkatan]);
 
-  // Filter geografis based on filtered gugusdepan
   const filteredGeografis = useMemo(() => {
     return geografisData.filter((geo) =>
       filteredGugusdepan.some((gudep) => gudep.id === geo.gudep_id)
     );
   }, [geografisData, filteredGugusdepan]);
 
-  // Style function for GeoJSON layers
   const geoJSONStyle = useCallback(
     (feature) => {
       const kwarranNameFromGeoJSON = feature?.properties?.nama;
       const originalColor = kwarranColors[kwarranNameFromGeoJSON] || "#cccccc";
       const inactiveColor = "#AAAAAA";
-
-      // If a filter is active
       if (selectedKwarran) {
         if (kwarranNameFromGeoJSON === selectedKwarran) {
           return {
@@ -513,13 +501,10 @@ const UserGugusdepan = () => {
     [kwarranColors, selectedKwarran]
   );
 
-  // Event handlers for GeoJSON layers
   const onEachFeature = useCallback(
     (feature, layer) => {
       if (feature?.properties?.nama) {
         const kwarranNameFromGeoJSON = feature.properties.nama;
-
-        // Find gudep belonging to this kwarran
         const gudepInKwarran = gugusdepanData.filter((gudep) => {
           const kwarran = kwarranData.find((k) => k.id === gudep.kwarran_id);
           return (
@@ -527,22 +512,16 @@ const UserGugusdepan = () => {
             kwarranNameFromGeoJSON?.trim().toLowerCase()
           );
         });
-
-        // Calculate counts
         const siagaCount = gudepInKwarran.filter(
           (g) => g.tingkatan?.trim().toLowerCase() === "siaga"
         ).length;
-
         const penggalangCount = gudepInKwarran.filter(
           (g) => g.tingkatan?.trim().toLowerCase() === "penggalang"
         ).length;
-
         const penegakPandegaCount = gudepInKwarran.filter((g) => {
           const tingkatan = g.tingkatan?.trim().toLowerCase();
           return tingkatan === "penegak/pandega" || tingkatan === "penegak";
         }).length;
-
-        // Bind popup
         layer.bindPopup(`
         <div>
           <h3 class="font-bold text-lg">Kwarran ${kwarranNameFromGeoJSON}</h3>
@@ -552,57 +531,75 @@ const UserGugusdepan = () => {
           <span><strong>Penegak/Pandega:</strong> ${penegakPandegaCount}</span><br/>
         </div>
       `);
-
-        // Set click handler
-        layer.on({
-          click: () => setSelectedKwarran(kwarranNameFromGeoJSON),
-        });
+        layer.on({ click: () => setSelectedKwarran(kwarranNameFromGeoJSON) });
       }
     },
     [gugusdepanData, kwarranData, setSelectedKwarran]
   );
 
-  // Format kwarran options for dropdown
   const kwarranOptions = useMemo(() => {
     return kwarranData.map((k) => ({ nama: k.nama }));
   }, [kwarranData]);
 
-  // Render markers helper function
   const renderMarkers = useCallback(() => {
     return filteredGeografis.map((geo) => {
-      // Find matching gudep
       const matchedGudep = filteredGugusdepan.find(
         (gudep) => gudep.id === geo.gudep_id
       );
       if (!matchedGudep) return null;
 
-      // Parse coordinates
-      let lat = NaN,
-        lng = NaN;
+      // Untuk debugging jika konten popup masih sama:
+      // console.log("Render Marker untuk geo.gudep_id:", geo.gudep_id, "matchedGudep ID:", matchedGudep.id, "Pangkalan:", matchedGudep.pangkalan);
+
+      let buttonLat = NaN;
+      let buttonLng = NaN;
+      if (
+        typeof matchedGudep.latitude === "number" &&
+        typeof matchedGudep.longitude === "number"
+      ) {
+        buttonLat = matchedGudep.latitude;
+        buttonLng = matchedGudep.longitude;
+      } else if (
+        matchedGudep.geografises &&
+        typeof matchedGudep.geografises.titik_koordinat === "string"
+      ) {
+        const coordsStr = matchedGudep.geografises.titik_koordinat;
+        const coordsArray = coordsStr
+          .split(",")
+          .map((coord) => parseFloat(coord.trim()));
+        if (
+          coordsArray.length === 2 &&
+          !isNaN(coordsArray[0]) &&
+          !isNaN(coordsArray[1])
+        ) {
+          buttonLat = coordsArray[0];
+          buttonLng = coordsArray[1];
+        }
+      }
+
+      let markerLat = NaN;
+      let markerLng = NaN;
       if (geo.titik_koordinat) {
         const coords = geo.titik_koordinat
           .split(",")
           .map((coord) => parseFloat(coord.trim()));
         if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
-          lat = coords[0];
-          lng = coords[1];
+          markerLat = coords[0];
+          markerLng = coords[1];
         }
       } else if (geo.latitude && geo.longitude) {
-        lat = parseFloat(geo.latitude);
-        lng = parseFloat(geo.longitude);
+        markerLat = parseFloat(geo.latitude);
+        markerLng = parseFloat(geo.longitude);
       }
+      if (isNaN(markerLat) || isNaN(markerLng)) return null;
 
-      if (isNaN(lat) || isNaN(lng)) return null;
-
-      // Get kwarran name
       const kwarran = kwarranData.find((k) => k.id === matchedGudep.kwarran_id);
       const kwarranName = kwarran?.nama || "Tidak diketahui";
 
-      // Create marker
       return (
         <Marker
           key={geo.id || matchedGudep.id}
-          position={[lat, lng]}
+          position={[markerLat, markerLng]}
           icon={createCustomIcon(matchedGudep.tingkatan)}
           eventHandlers={{
             click: () => setSelectedGugusdepan(matchedGudep),
@@ -610,22 +607,56 @@ const UserGugusdepan = () => {
         >
           <Popup>
             <div className="text-sm">
-              <h4 className="font-bold text-[#6a00b8] mb-1 text-base">
-                {matchedGudep.pangkalan || "Nama Pangkalan Belum Ada"}
-              </h4>
-              <b>No. Gudep:</b> {matchedGudep.no_gudep || "-"}
+              <div className="flex flex-row justify-center items-start gap-2">
+                {" "}
+                {/* Mengatur judul dan tombol berdampingan */}
+                <h4 className="font-bold text-[#6a00b8] mb-1 text-base flex-grow">
+                  {" "}
+                  {/* flex-grow agar judul mengambil sisa ruang jika perlu */}
+                  {matchedGudep.no_gudep || "No. Gudep Belum Ada"}
+                </h4>
+                {!isNaN(buttonLat) && !isNaN(buttonLng) && (
+                  <div className="flex-shrink-0">
+                    {" "}
+                    {/* Mencegah tombol mengecil jika judul panjang, mt-2 dihapus untuk alignment yg lebih baik dengan items-start */}
+                    <a
+                      href={`https://maps.google.com/?q=${buttonLat},${buttonLng}`} // Menggunakan URL dari snippet Anda
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <button
+                        className="px-2 bg-[#9500FF] text-white rounded hover:bg-[#590396] transition cursor-pointer flex items-center justify-center" // 'flex items-center' ditambahkan untuk alignment ikon yang lebih baik
+                        title="Lihat di Maps"
+                      >
+                        <span className="material-icons align-middle text-base leading-none">
+                          {" "}
+                          {/* text-base dan leading-none untuk ukuran ikon */}
+                          near_me
+                        </span>
+                      </button>
+                    </a>
+                  </div>
+                )}
+              </div>
+              <b>Pangkalan:</b> {matchedGudep.pangkalan || "-"}
               <br />
               <b>Kwarran:</b> {kwarranName}
               <br />
               <b>Tingkatan:</b> {matchedGudep.tingkatan || "-"}
+              <br />
             </div>
           </Popup>
         </Marker>
       );
     });
-  }, [filteredGeografis, filteredGugusdepan, kwarranData, createCustomIcon]);
+  }, [
+    filteredGeografis,
+    filteredGugusdepan,
+    kwarranData,
+    createCustomIcon,
+    setSelectedGugusdepan,
+  ]); // Menambahkan setSelectedGugusdepan
 
-  // Helper to render GeoJSON layers
   const renderGeoJSONLayers = useCallback(() => {
     return Object.entries(GEO_JSON_DATA).map(([key, data]) => (
       <GeoJSON
@@ -637,12 +668,10 @@ const UserGugusdepan = () => {
     ));
   }, [geoJSONStyle, onEachFeature]);
 
-  // Render function
   return (
     <UserTemplate>
       <div className="md:ml-18 rounded-xl shadow-xl mt-4 md:mt-15">
         <div className="p-4 md:mt-18">
-          {/* Loading state */}
           {loading && (
             <div className="flex justify-center items-center h-96">
               <p className="text-lg font-semibold text-gray-500">
@@ -650,8 +679,6 @@ const UserGugusdepan = () => {
               </p>
             </div>
           )}
-
-          {/* Error state */}
           {error && !loading && (
             <div
               className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
@@ -661,8 +688,6 @@ const UserGugusdepan = () => {
               <span className="block sm:inline"> {error}</span>
             </div>
           )}
-
-          {/* Map - only render when data is loaded */}
           {!loading && !error && (
             <MapContainer
               center={DEFAULT_POSITION}
@@ -677,16 +702,11 @@ const UserGugusdepan = () => {
             >
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               />
-
-              {/* GeoJSON Layers */}
               {renderGeoJSONLayers()}
-
-              {/* Markers */}
               {renderMarkers()}
               <KwarranLegend kwarranColors={kwarranColors} />
-              {/* Map Controls */}
               <ToggleMapSize
                 isFullScreen={isFullScreen}
                 setIsFullScreen={setIsFullScreen}
@@ -702,8 +722,6 @@ const UserGugusdepan = () => {
               <MapLegend />
             </MapContainer>
           )}
-
-          {/* Gudep Detail Panel - only show when not fullscreen */}
           {!isFullScreen && selectedGugusdepan && (
             <DetailGudepPanel
               selectedGugusdepan={selectedGugusdepan}
@@ -712,8 +730,8 @@ const UserGugusdepan = () => {
           )}
         </div>
       </div>
-
       <style jsx global="true">{`
+        /* ... (style Anda yang sudah ada) ... */
         .leaflet-container {
           width: 100%;
           height: 100%;
