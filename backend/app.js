@@ -52,9 +52,6 @@ const uploadToImgur = async (req, res, next) => {
   }
 };
 
-// --- Route-Specific Middleware (Imgur Upload Trigger) ---
-// Middleware ini akan dijalankan untuk route yang cocok dengan " /:userId"
-// PERHATIAN: Ada spasi " /:userId"
 app.use(" /:userId", upload.single("photo"), uploadToImgur); // Hapus middleware inline terakhir karena uploadToImgur sudah memanggil next()
 
 // --- Main Routes ---

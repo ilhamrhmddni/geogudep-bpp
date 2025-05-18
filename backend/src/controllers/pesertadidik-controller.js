@@ -130,4 +130,33 @@ module.exports = {
       });
     }
   },
+
+  // update
+  getPesertaDidikByGudepId: async (req, res) => {
+    const { gudep_id } = req.query;
+
+    if (!gudep_id) {
+      return res.status(400).json({ message: "Parameter gudep_id diperlukan" });
+    }
+
+    try {
+      const pesertaDidik = await PesertaDidik.findAll({
+        where: { gudep_id },
+        include: [
+          {
+            model: Gudep,
+            as: "gudepes", // pastikan sesuai dengan relasi
+            attributes: ["id", "no_gudep", "tingkatan"],
+          },
+        ],
+      });
+
+      return res.status(200).json({ data: pesertaDidik });
+    } catch (error) {
+      console.error("Error fetching peserta didik by gudep:", error);
+      return res
+        .status(500)
+        .json({ message: "Terjadi kesalahan server", error: error.message });
+    }
+  },
 };

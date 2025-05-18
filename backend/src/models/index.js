@@ -34,12 +34,15 @@ db.Prestasi.belongsTo(db.Gudep, { foreignKey: "gudep_id", as: "gudepes" });
 db.Gudep.hasOne(db.Geografis, { foreignKey: "gudep_id", as: "geografises" });
 db.Geografis.belongsTo(db.Gudep, { foreignKey: "gudep_id", as: "gudepes" });
 
+// -----------------------------------
 // **Gudep and PesertaDidik (One-to-Many)**
 db.Gudep.hasMany(db.PesertaDidik, {
   foreignKey: "gudep_id",
   as: "pesertaDidikes",
 });
+
 db.PesertaDidik.belongsTo(db.Gudep, { foreignKey: "gudep_id", as: "gudepes" });
+// -----------------------------------
 
 // **Many-to-Many Gudep and Event through Prestasi**
 db.Event.belongsToMany(db.Gudep, {

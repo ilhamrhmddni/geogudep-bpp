@@ -1,14 +1,12 @@
-require("dotenv").config(); // Load .env file
+require("dotenv").config();
 
-// Ambil variabel dari .env
 const user = process.env.DB_USER;
 const password = process.env.DB_PASSWORD;
 const host = process.env.DB_HOST;
 const port = process.env.DB_PORT;
 const dbName = process.env.DB_NAME;
-const ssl = process.env.DB_SSL === "false"; // Jika SSL diaktifkan, maka "true"
+const ssl = process.env.DB_SSL === "false";
 
-// Bangun URL koneksi untuk PostgreSQL
 const databaseUrl = `postgresql://${user}:${password}@${host}:${port}/${dbName}?sslmode=${
   ssl ? "" : "disable"
 }`;
@@ -22,7 +20,7 @@ module.exports = {
       rejectUnauthorized: false,
     },
   },
-  logging: false, // Disable logging untuk produksi
+  logging: false,
   pool: {
     max: 3,
     min: 0,
